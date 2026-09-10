@@ -1,0 +1,59 @@
+name: Deploy chat.rss7.net
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-chat-lolipop
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare public files
+        run: |
+          set -euo pipefail
+          rm -rf .deploy
+          mkdir -p .deploy/assets/css .deploy/assets/js
+          cp index.html favicon.svg robots.txt sitemap.xml .nojekyll .deploy/
+          cp assets/css/styles.css .deploy/assets/css/
+          cp assets/js/main.js .deploy/assets/js/
+          test -f .deploy/index.html
+          test -f .deploy/assets/css/styles.css
+          test -f .deploy/assets/js/main.js
+
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Deploy by explicit FTPS
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER"
+          test -n "$FTP_PASSWORD"
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          mirror --reverse --verbose=1 --no-perms ./.deploy/ /chat
+          bye
+          LFTP_EOF
+
+      - name: Verify production
+        run: |
+          curl --fail --silent --show-error --retry 4 https://chat.rss7.net/ > /tmp/chat.html
+          grep -q 'https://chat.rss7.net/' /tmp/chat.html
+          grep -q 'ホームページは' /tmp/chat.html

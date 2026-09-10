@@ -51,3 +51,16 @@ build/test、console error、404、broken links、mobile/desktop、layout shift�
 ## Safety
 フォーム、analytics、structured data、routing、PWA/service worker等の既存機能を壊さない。
 破壊的・不可逆・有料・認証情報に関わる操作は慎重に行う。秘密情報をcommitしない。
+
+## Continuous execution
+詳細は `docs/CONTINUOUS_EXECUTION.md`、現在状態は `ops/project-state.json`(`scripts/project_state.py show|validate|set-next` で確認)を参照。
+
+- 一タスクの完了や軽微な失敗はユーザー確認を求める理由にしない。GREENなら確認なしで次の安全な工程へ進む。
+- セッション再接続時は `git status` + GitHub Issue/PR + `ops/project-state.json` の順で状態を読み直し、そこから再開する。
+- `ops/project-state.json` は工程ごとにcommitしない。PR起票・merge・handoff・hard gateなど重要チェックポイントだけ同期する。
+- コード/テストの自己修復は最大2回。通信/API等の一時障害は指数バックオフで最大3回。上限到達で `REVIEW_NEEDED` として停止し人間確認を待つ(無限ループ禁止)。
+- 失敗したツールに固執しない。CLI → API → ブラウザ操作の順で代替経路に切り替える。
+- 3-AI評議会は、設計初期・重大PRのマージ前・同じ問題を2回自動修正できない時のみ招集する。定型作業では招集しない。
+- 破壊的・不可逆・新規課金・秘密情報・プライバシーに関わる操作だけは必ず人間確認を挟む(hard gate)。それ以外は自動継続する。
+- 本番deployは現行版をバックアップしてから実行し、失敗時は旧ファイルをrestoreする。`release.txt` のcommit SHAをcache-buster付きで照合して最新本番を証明する。
+- DONE(QA/CI/PR承認/merge/deploy/production verifyが全てGREEN)に達したら、確認を待たずに次の優先Issueへ進む。Open Issueが無ければ、安全に定義できる次マイルストーンをPlanning Issueとして起票する。

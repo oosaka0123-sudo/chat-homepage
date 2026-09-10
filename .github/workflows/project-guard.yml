@@ -1,0 +1,59 @@
+name: Project guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate project state
+        run: python3 scripts/project_state.py validate
+
+      - name: Whitespace / diff check
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          if [ -z "$base" ] || ! git cat-file -e "$base" 2>/dev/null; then
+            echo "No comparable base commit found; skipping diff --check."
+            exit 0
+          fi
+          git diff --check "$base" HEAD
+
+      - name: Static checks
+        run: |
+          set -euo pipefail
+
+          if grep -rn '^<<<<<<< \|^=======$\|^>>>>>>> ' \
+              --exclude-dir=.git \
+              --exclude-dir=node_modules \
+              .; then
+            echo "Merge conflict markers found." >&2
+            exit 1
+          fi
+
+          if grep -rniE 'BEGIN (RSA|OPENSSH|PGP) PRIVATE KEY' \
+              --exclude-dir=.git \
+              --exclude-dir=node_modules \
+              .; then
+            echo "Possible private key material found." >&2
+            exit 1
+          fi
+
+          find . -name '*.json' -not -path './.git/*' -print0 \
+            | xargs -0 -n1 python3 -c 'import json,sys; json.load(open(sys.argv[1], encoding="utf-8"))'

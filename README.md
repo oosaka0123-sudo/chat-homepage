@@ -26,6 +26,6 @@ AI・画像・動画生成は制作時に活用し、初期表示経路には置
 - URL: https://chat.rss7.net/
 - Hosting: Lolipop
 - Source of truth: `main`
-- Workflow: `.github/workflows/deploy-lolipop.yml`（手動実行）
+- Workflow: `.github/workflows/deploy-lolipop.yml`（`main` push時 自動 / `workflow_dispatch` 手動）
 
 作業は branch → PR → review → merge → deploy → production check で進めます。

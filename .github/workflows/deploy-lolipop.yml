@@ -25,9 +25,17 @@ jobs:
           cp index.html favicon.svg robots.txt sitemap.xml .nojekyll .deploy/
           cp assets/css/styles.css .deploy/assets/css/
           cp assets/js/main.js .deploy/assets/js/
+          mkdir -p .deploy/demos/salon .deploy/demos/cafe .deploy/demos/reform
+          cp demos/salon/index.html demos/salon/styles.css .deploy/demos/salon/
+          cp demos/cafe/index.html demos/cafe/styles.css .deploy/demos/cafe/
+          cp demos/reform/index.html demos/reform/styles.css .deploy/demos/reform/
           test -f .deploy/index.html
           test -f .deploy/assets/css/styles.css
           test -f .deploy/assets/js/main.js
+          test -f .deploy/demos/salon/index.html
+          test -f .deploy/demos/cafe/index.html
+          test -f .deploy/demos/reform/index.html
+          ! find .deploy -iname '*.md' | grep -q .
 
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp

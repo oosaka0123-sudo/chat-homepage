@@ -220,6 +220,7 @@ img { max-width: 100%; display: block; }
   }
   .site-nav ul {
     flex-direction: row;
+    flex-wrap: wrap;
     gap: 1.5rem;
     padding-top: 0;
   }
@@ -417,6 +418,52 @@ img { max-width: 100%; display: block; }
 }
 
 .feature-list { display: grid; }
+
+/* Demos */
+
+.demos-intro {
+  max-width: 40rem;
+}
+
+.demo-list { margin-top: 1rem; }
+
+.demo-card {
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--color-ink);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.demo-tag {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.demo-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-weight: 700;
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-ink);
+  margin-top: 0.25rem;
+  min-height: 44px;
+  transition: color var(--transition-fast), border-color var(--transition-fast), gap var(--transition-fast);
+}
+
+.demo-link::after {
+  content: "→";
+}
+
+.demo-link:hover,
+.demo-link:focus-visible {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  gap: 0.7em;
+}
 
 /* Comparison table */
 

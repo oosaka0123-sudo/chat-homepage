@@ -31,3 +31,7 @@ GitHub source of truth: `oosaka0123-sudo/chat-homepage` の `main`
 
 初回公開は2026-09-10にSurface上の保存済みFileZilla認証を使い、明示FTPSで実施した。
 本番確認では index/CSS/JS/favicon/robots/sitemap がすべて HTTP 200、canonicalは `https://chat.rss7.net/`、H1は1件だった。
+
+## HTTPS
+
+`chat.rss7.net` は無料SSLを有効化し、ルート `.htaccess` でHTTPからHTTPSへ301リダイレクトします。canonical / sitemap / 公開確認URLはすべてHTTPSで統一します。

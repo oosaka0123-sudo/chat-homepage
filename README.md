@@ -21,6 +21,11 @@ AI・画像・動画生成は制作時に活用し、初期表示経路には置
 - サブコピー: 制作はプロにおまかせ。公開後の変更も、チャットで伝えるだけ。
 - CTA: 無料相談する
 
-## 公開
+## 本番
 
-GitHub Pagesで公開予定。mainを本番基準、作業はブランチ→PR→レビュー→マージで進めます。
+- URL: https://chat.rss7.net/
+- Hosting: Lolipop
+- Source of truth: `main`
+- Workflow: `.github/workflows/deploy-lolipop.yml`（手動実行）
+
+作業は branch → PR → review → merge → deploy → production check で進めます。

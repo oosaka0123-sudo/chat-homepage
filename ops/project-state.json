@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "project": "chat-homepage",
-  "state": "PR_OPEN",
-  "active_issue": 9,
-  "active_branch": "qa/9-launch-quality",
-  "last_completed": "Opened PR #10 after 3-AI council GO decision and launch quality audit",
-  "next_action": "Wait for project-guard CI on PR #10; if GREEN, merge, confirm Issue #9 closure, then create the next planning issue for conversion and inquiry-flow readiness",
+  "state": "QA_LOCAL",
+  "active_issue": 12,
+  "active_branch": "feat/customer-guide-12",
+  "last_completed": "3-AI Council final GREEN; customer guide design docs and implementation completed; local QA and Gemini code review GREEN",
+  "next_action": "Run final QA, commit and push, open PR for Issue #12, then wait for project-guard CI and review before merge",
   "blockers": [],
   "retry_counts": {
     "self_heal": 0,
     "transient": 0
   },
-  "last_verified_at": "2026-09-10T07:05:53Z"
+  "last_verified_at": "2026-09-10T10:29:00Z"
 }

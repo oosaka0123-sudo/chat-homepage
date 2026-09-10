@@ -1,0 +1,278 @@
+/* チャットホームページ ご利用ガイド styles */
+
+:root {
+  --g-ink: #1a1a18;
+  --g-paper: #f7f4ee;
+  --g-paper-alt: #efeadf;
+  --g-accent: #b5502e;
+  --g-accent-ink: #ffffff;
+  --g-line: #d8d2c4;
+  --g-safe-bg: #fbeee7;
+  --g-safe-border: #b5502e;
+  --font-body: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", system-ui, -apple-system, sans-serif;
+  --container-max: 1180px;
+  --container-narrow: 640px;
+  --transition-fast: 200ms ease-out;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--g-ink);
+  background: var(--g-paper);
+  line-height: 1.8;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+  margin: 0 0 0.6em;
+  font-weight: 700;
+}
+
+h1 { font-size: clamp(1.9rem, 6vw, 3rem); line-height: 1.3; }
+h2 { font-size: clamp(1.3rem, 3.5vw, 1.9rem); }
+h3 { font-size: clamp(1.05rem, 2vw, 1.2rem); margin-bottom: 0.4em; }
+
+p { margin: 0 0 1em; }
+a { color: inherit; }
+ul, ol { padding-left: 0; margin: 0; list-style: none; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  background: var(--g-accent);
+  color: var(--g-accent-ink);
+  padding: 0.6rem 1rem;
+  z-index: 1000;
+  transition: top var(--transition-fast);
+}
+.skip-link:focus { top: 0.5rem; }
+
+:focus-visible {
+  outline: 2px solid var(--g-accent);
+  outline-offset: 2px;
+}
+
+.container {
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+}
+.container-narrow { max-width: var(--container-narrow); }
+
+/* Header */
+
+.g-header {
+  border-bottom: 1px solid var(--g-line);
+  background: var(--g-paper);
+}
+.g-header-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  padding-block: 1rem;
+}
+.g-logo { font-weight: 700; }
+.g-header-note {
+  font-size: 0.85rem;
+  color: var(--g-ink);
+  opacity: 0.7;
+}
+
+/* Hero */
+
+.g-hero { padding-block: clamp(2.5rem, 8vw, 4.5rem) clamp(2rem, 6vw, 3rem); }
+.g-hero-sub { font-size: clamp(1rem, 2vw, 1.15rem); }
+.g-hero-note {
+  display: inline-block;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--g-line);
+  border-radius: 999px;
+  margin: 0;
+}
+
+/* Sections */
+
+.g-section { padding-block: clamp(2rem, 6vw, 3.5rem); }
+.g-section-alt { background: var(--g-paper-alt); }
+
+.g-list li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--g-line);
+}
+.g-list li:first-child { border-top: 1px solid var(--g-line); }
+.g-list li::before {
+  content: "・";
+  color: var(--g-accent);
+  font-weight: 700;
+  margin-right: 0.4em;
+}
+
+.g-note {
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+/* Examples */
+
+.g-example {
+  padding: 1rem 0;
+  border-top: 1px solid var(--g-line);
+}
+.g-example:last-child { border-bottom: 1px solid var(--g-line); }
+.g-example h3 { margin-bottom: 0.3em; }
+
+.example-text {
+  background: var(--g-paper);
+  border: 1px solid var(--g-line);
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.98rem;
+  user-select: text;
+}
+.g-section-alt .example-text { background: var(--g-paper); }
+
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border: 1px solid var(--g-ink);
+  background: transparent;
+  color: var(--g-ink);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.copy-btn:hover { background: var(--g-ink); color: var(--g-paper); }
+
+/* Warning box */
+
+.g-warning {
+  background: var(--g-safe-bg);
+  border-left: 4px solid var(--g-safe-border);
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
+}
+.g-warning p { margin: 0; }
+.g-warning-label { margin-right: 0.4em; }
+
+/* Flow */
+
+.g-flow li {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--g-line);
+}
+.g-flow li:first-child { border-top: 1px solid var(--g-line); }
+.g-flow-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  border: 1px solid var(--g-ink);
+  border-radius: 999px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.btn-primary {
+  background: var(--g-accent);
+  color: var(--g-accent-ink);
+  border-color: var(--g-accent);
+}
+.btn-primary:hover { background: #963f22; border-color: #963f22; }
+
+/* FAQ (shared pattern with main LP) */
+
+.faq-list details {
+  border-top: 1px solid var(--g-line);
+  padding: 0.9rem 0;
+}
+.faq-list details:first-child { border-top: 1px solid var(--g-line); }
+.faq-list details:last-child { border-bottom: 1px solid var(--g-line); }
+
+.faq-list summary {
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+  position: relative;
+  padding-right: 1.5rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.faq-list summary::-webkit-details-marker { display: none; }
+.faq-list summary::before {
+  content: "+";
+  position: absolute;
+  right: 0;
+  font-weight: 700;
+  color: var(--g-accent);
+}
+.faq-list details[open] summary::before { content: "－"; }
+.faq-list details p { margin-top: 0.6rem; }
+
+/* Live region for copy feedback */
+
+.g-live-region {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Footer */
+
+.g-footer {
+  border-top: 1px solid var(--g-line);
+  padding-block: 1.5rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.001ms !important;
+  }
+}

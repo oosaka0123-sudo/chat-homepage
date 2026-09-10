@@ -14,6 +14,7 @@ on:
       - '.htaccess'
       - 'assets/**'
       - 'demos/**'
+      - 'guide/**'
       - '.github/workflows/deploy-lolipop.yml'
 
 permissions:
@@ -40,10 +41,11 @@ jobs:
           cp index.html favicon.svg robots.txt sitemap.xml .nojekyll .htaccess .deploy/
           cp assets/css/styles.css .deploy/assets/css/
           cp assets/js/main.js .deploy/assets/js/
-          mkdir -p .deploy/demos/salon .deploy/demos/cafe .deploy/demos/reform
+          mkdir -p .deploy/demos/salon .deploy/demos/cafe .deploy/demos/reform .deploy/guide
           cp demos/salon/index.html demos/salon/styles.css .deploy/demos/salon/
           cp demos/cafe/index.html demos/cafe/styles.css .deploy/demos/cafe/
           cp demos/reform/index.html demos/reform/styles.css .deploy/demos/reform/
+          cp guide/index.html guide/styles.css guide/guide.js .deploy/guide/
           printf '%s\n' "$GITHUB_SHA" > .deploy/release.txt
           test -f .deploy/index.html
           test -f .deploy/.htaccess
@@ -51,6 +53,10 @@ jobs:
           test -f .deploy/demos/salon/index.html
           test -f .deploy/demos/cafe/index.html
           test -f .deploy/demos/reform/index.html
+          test -f .deploy/guide/index.html
+          test -f .deploy/guide/styles.css
+          test -f .deploy/guide/guide.js
+          grep -q 'noindex,nofollow' .deploy/guide/index.html
           ! find .deploy -iname '*.md' | grep -q .
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
@@ -111,7 +117,7 @@ jobs:
           curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
             "$PRODUCTION_URL/release.txt?v=$bust" > /tmp/release.txt
           grep -Fxq "$GITHUB_SHA" /tmp/release.txt
-          for path in demos/salon/ demos/cafe/ demos/reform/; do
+          for path in demos/salon/ demos/cafe/ demos/reform/ guide/; do
             curl --fail --silent --show-error --retry 3 -o /dev/null \
               "$PRODUCTION_URL/$path?v=$bust"
           done

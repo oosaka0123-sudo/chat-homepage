@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "project": "chat-homepage",
-  "state": "QA_LOCAL",
+  "state": "PR_OPEN",
   "active_issue": 12,
   "active_branch": "feat/customer-guide-12",
-  "last_completed": "3-AI Council final GREEN; customer guide design docs and implementation completed; local QA and Gemini code review GREEN",
-  "next_action": "Run final QA, commit and push, open PR for Issue #12, then wait for project-guard CI and review before merge",
+  "last_completed": "Opened PR #13 after 3-AI Council GREEN, Claude implementation, local QA PASS, and Gemini code review GREEN",
+  "next_action": "Wait for project-guard CI and PR review on #13; if GREEN, squash merge, monitor automatic production deploy, then verify /guide/ and release SHA",
   "blockers": [],
   "retry_counts": {
     "self_heal": 0,
     "transient": 0
   },
-  "last_verified_at": "2026-09-10T10:29:00Z"
+  "last_verified_at": "2026-09-10T10:31:00Z"
 }

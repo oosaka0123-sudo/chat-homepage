@@ -1,6 +1,8 @@
 (function () {
   "use strict";
 
+  document.documentElement.classList.add("js");
+
   function initNavToggle() {
     var toggle = document.getElementById("nav-toggle");
     var nav = document.getElementById("site-nav");

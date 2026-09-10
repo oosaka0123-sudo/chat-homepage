@@ -2,6 +2,19 @@ name: Deploy chat.rss7.net
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'index.html'
+      - 'favicon.svg'
+      - 'robots.txt'
+      - 'sitemap.xml'
+      - '.nojekyll'
+      - '.htaccess'
+      - 'assets/**'
+      - 'demos/**'
+      - '.github/workflows/deploy-lolipop.yml'
 
 permissions:
   contents: read
@@ -10,6 +23,8 @@ concurrency:
   group: deploy-chat-lolipop
   cancel-in-progress: false
 
+env:
+  PRODUCTION_URL: https://chat.rss7.net
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -20,7 +35,7 @@ jobs:
       - name: Prepare public files
         run: |
           set -euo pipefail
-          rm -rf .deploy
+          rm -rf .deploy .rollback
           mkdir -p .deploy/assets/css .deploy/assets/js
           cp index.html favicon.svg robots.txt sitemap.xml .nojekyll .htaccess .deploy/
           cp assets/css/styles.css .deploy/assets/css/
@@ -29,19 +44,19 @@ jobs:
           cp demos/salon/index.html demos/salon/styles.css .deploy/demos/salon/
           cp demos/cafe/index.html demos/cafe/styles.css .deploy/demos/cafe/
           cp demos/reform/index.html demos/reform/styles.css .deploy/demos/reform/
+          printf '%s\n' "$GITHUB_SHA" > .deploy/release.txt
           test -f .deploy/index.html
           test -f .deploy/.htaccess
-          test -f .deploy/assets/css/styles.css
-          test -f .deploy/assets/js/main.js
+          test -f .deploy/release.txt
           test -f .deploy/demos/salon/index.html
           test -f .deploy/demos/cafe/index.html
           test -f .deploy/demos/reform/index.html
           ! find .deploy -iname '*.md' | grep -q .
-
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Deploy by explicit FTPS
+      - name: Backup current production
+        id: backup
         env:
           FTP_USER: ${{ secrets.CHAT_FTP_USER }}
           FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
@@ -49,6 +64,7 @@ jobs:
           set -euo pipefail
           test -n "$FTP_USER"
           test -n "$FTP_PASSWORD"
+          mkdir -p .rollback
           lftp <<LFTP_EOF
           set cmd:fail-exit true
           set ftp:ssl-force true
@@ -57,12 +73,68 @@ jobs:
           set net:timeout 20
           set net:max-retries 3
           open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
-          mirror --reverse --verbose=1 --no-perms ./.deploy/ /chat
+          mirror --verbose=0 /chat/ ./.rollback/
           bye
           LFTP_EOF
 
-      - name: Verify production
+      - name: Deploy by explicit FTPS
+        id: upload
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
         run: |
-          curl --fail --silent --show-error --retry 4 https://chat.rss7.net/ > /tmp/chat.html
+          set -euo pipefail
+          deploy_once() {
+            lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          mirror --reverse --verbose=1 --no-perms ./.deploy/ /chat/
+          bye
+          LFTP_EOF
+          }
+          deploy_once || { sleep 10; deploy_once; }
+
+      - name: Verify production release
+        id: verify
+        run: |
+          set -euo pipefail
+          bust="${GITHUB_SHA:0:12}-$(date +%s)"
+          curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
+            "$PRODUCTION_URL/?v=$bust" > /tmp/chat.html
           grep -q 'https://chat.rss7.net/' /tmp/chat.html
           grep -q 'ホームページは' /tmp/chat.html
+          curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
+            "$PRODUCTION_URL/release.txt?v=$bust" > /tmp/release.txt
+          grep -Fxq "$GITHUB_SHA" /tmp/release.txt
+          for path in demos/salon/ demos/cafe/ demos/reform/; do
+            curl --fail --silent --show-error --retry 3 -o /dev/null \
+              "$PRODUCTION_URL/$path?v=$bust"
+          done
+      - name: Restore previous production on failure
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ ! -d .rollback ] || [ -z "$(find .rollback -mindepth 1 -print -quit)" ]; then
+            echo "No previous production backup is available; leaving the failed run visible."
+            exit 0
+          fi
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          mirror --reverse --verbose=1 --no-perms ./.rollback/ /chat/
+          bye
+          LFTP_EOF
+          echo "Previous production files restored. The workflow remains failed for investigation."

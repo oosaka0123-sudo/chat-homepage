@@ -150,6 +150,7 @@ img { max-width: 100%; display: block; }
 
 .header-inner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 1rem;
   padding-block: 0.9rem;
@@ -177,9 +178,7 @@ img { max-width: 100%; display: block; }
 }
 
 .btn-header {
-  order: 2;
-  padding: 0.6rem 1rem;
-  font-size: 0.9rem;
+  display: none;
 }
 
 .site-nav {
@@ -230,7 +229,53 @@ img { max-width: 100%; display: block; }
     min-height: auto;
   }
   .site-nav a:hover { color: var(--color-accent); }
-  .btn-header { order: 3; }
+  .btn-header {
+    display: inline-flex;
+    order: 3;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+.site-nav a[aria-current="page"] {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+/* Breadcrumb */
+
+.breadcrumb {
+  padding-top: 1.5rem;
+}
+
+.breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  font-size: 0.85rem;
+}
+
+.breadcrumb a {
+  text-decoration: underline;
+}
+
+.breadcrumb li:not(:last-child)::after {
+  content: "/";
+  margin-left: 0.4em;
+  color: var(--color-line);
+}
+
+.breadcrumb li[aria-current="page"] {
+  color: var(--color-ink);
+  opacity: 0.7;
+}
+
+/* Page lead (detail page intro under H1) */
+
+.page-lead {
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  max-width: 40rem;
 }
 
 /* Hero */
@@ -442,7 +487,8 @@ img { max-width: 100%; display: block; }
   color: var(--color-accent);
 }
 
-.demo-link {
+.demo-link,
+.more-link {
   display: inline-flex;
   align-items: center;
   gap: 0.4em;
@@ -454,15 +500,31 @@ img { max-width: 100%; display: block; }
   transition: color var(--transition-fast), border-color var(--transition-fast), gap var(--transition-fast);
 }
 
-.demo-link::after {
+.demo-link::after,
+.more-link::after {
   content: "→";
 }
 
 .demo-link:hover,
-.demo-link:focus-visible {
+.demo-link:focus-visible,
+.more-link:hover,
+.more-link:focus-visible {
   color: var(--color-accent);
   border-color: var(--color-accent);
   gap: 0.7em;
+}
+
+.section-dark .more-link {
+  border-color: var(--color-charcoal-ink);
+}
+
+/* CTA link row (detail page cross-links) */
+
+.link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
 }
 
 /* Comparison table */
@@ -624,7 +686,17 @@ thead th {
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.5rem 1.5rem;
+}
+
+.footer-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+
+.footer-nav a {
+  text-decoration: underline;
 }
 
 /* Progressive reveal (JS-enhanced only) */

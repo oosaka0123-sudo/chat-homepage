@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "project": "chat-homepage",
-  "state": "PR_OPEN",
-  "active_issue": 12,
-  "active_branch": "feat/customer-guide-12",
-  "last_completed": "Opened PR #13 after 3-AI Council GREEN, Claude implementation, local QA PASS, and Gemini code review GREEN",
-  "next_action": "Wait for project-guard CI and PR review on #13; if GREEN, squash merge, monitor automatic production deploy, then verify /guide/ and release SHA",
+  "state": "QA_LOCAL",
+  "active_issue": 14,
+  "active_branch": "feat/multipage-14",
+  "last_completed": "3-AI Council final GO (Claude/Gemini/ChatGPT PM) on the six-page public architecture; Gemini's independent architecture review is resolved (obtained via the already-authorized Vertex AI route, no new auth/secrets) so the prior Gemini review blocker no longer applies. Claude implemented docs/multipage-wireframe.md, docs/multipage-prototype.md, docs/multipage-frontend-design.md and the /service/, /price/, /flow/, /demos/, /faq/ pages plus a concise top-page rewrite, nav/footer/breadcrumb, canonical/OGP/structured data, sitemap.xml, and deploy workflow allowlist updates. Local static/JSON/YAML checks and a local static-server route/content smoke test all passed.",
+  "next_action": "Hand off to ChatGPT QA and Gemini diff review per Issue #14; if GREEN, commit, open PR for Issue #14, wait for project-guard CI and review, then merge, monitor automatic production deploy, and verify all 6 public pages plus the 3 existing demo URLs and /guide/ on the release SHA",
   "blockers": [],
   "retry_counts": {
     "self_heal": 0,
     "transient": 0
   },
-  "last_verified_at": "2026-09-10T10:31:00Z"
+  "last_verified_at": "2026-09-10T11:49:14Z"
 }

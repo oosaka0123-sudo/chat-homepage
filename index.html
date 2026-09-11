@@ -19,9 +19,9 @@
 <meta name="twitter:title" content="チャットホームページ | ホームページは、話すだけ。">
 <meta name="twitter:description" content="制作はプロにおまかせ。公開後の変更も、チャットで伝えるだけ。">
 
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="assets/css/styles.css">
-<script defer src="assets/js/main.js"></script>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/css/styles.css">
+<script defer src="/assets/js/main.js"></script>
 
 <script type="application/ld+json">
 {
@@ -44,21 +44,18 @@
 
 <header class="site-header">
   <div class="container header-inner">
-    <a class="logo" href="#top">チャットホームページ</a>
+    <a class="logo" href="/">チャットホームページ</a>
     <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="site-nav">
       <span class="nav-toggle-label">メニュー</span>
     </button>
     <nav class="site-nav" id="site-nav" aria-label="サイト内ナビゲーション">
       <ul>
-        <li><a href="#pains">こんな悩み</a></li>
-        <li><a href="#benefits">選ばれる理由</a></li>
-        <li><a href="#how-it-works">はじめかた</a></li>
-        <li><a href="#chat-demo">更新デモ</a></li>
-        <li><a href="#use-cases">活用シーン</a></li>
-        <li><a href="#features">できること</a></li>
-        <li><a href="#demos">制作デモ</a></li>
-        <li><a href="#pricing">料金</a></li>
-        <li><a href="#faq">よくある質問</a></li>
+        <li><a href="/" aria-current="page">トップ</a></li>
+        <li><a href="/service/">サービス</a></li>
+        <li><a href="/price/">料金</a></li>
+        <li><a href="/flow/">流れ</a></li>
+        <li><a href="/demos/">デモ</a></li>
+        <li><a href="/faq/">FAQ</a></li>
       </ul>
     </nav>
     <a class="btn btn-primary btn-header" href="#contact">無料相談する</a>
@@ -74,7 +71,7 @@
         <p class="hero-sub">制作はプロにおまかせ。公開後の変更も、チャットで伝えるだけ。</p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="#contact">無料相談する</a>
-          <a class="btn btn-ghost" href="#how-it-works">仕組みを見る</a>
+          <a class="btn btn-ghost" href="/flow/">仕組みを見る</a>
         </div>
       </div>
       <div class="hero-visual" aria-hidden="true">
@@ -146,6 +143,7 @@
           </div>
         </li>
       </ol>
+      <a class="more-link" href="/flow/">制作・公開後の流れを詳しく見る</a>
     </div>
   </section>
 
@@ -182,37 +180,15 @@
     </div>
   </section>
 
-  <section class="section" id="use-cases" aria-labelledby="use-cases-heading">
-    <div class="container">
-      <h2 id="use-cases-heading">こんな事業者様に</h2>
-      <ul class="grid grid-3 use-case-list">
-        <li>建築・工務店</li>
-        <li>店舗</li>
-        <li>美容</li>
-        <li>飲食</li>
-        <li>会社</li>
-        <li>個人事業</li>
-      </ul>
+  <section class="section" id="service-summary" aria-labelledby="service-summary-heading">
+    <div class="container container-narrow">
+      <h2 id="service-summary-heading">サービス内容</h2>
+      <p>レスポンシブ対応・独自ドメイン・お問い合わせフォーム・基本的なSEO対応など、必要な機能をひとそろい。建築・工務店、店舗、美容、飲食、会社、個人事業まで幅広い業種に対応します。管理画面での操作が必要な普通のホームページ制作とは異なり、公開後の更新はチャットひとつで完結します。</p>
+      <a class="more-link" href="/service/">サービス内容を詳しく見る</a>
     </div>
   </section>
 
-  <section class="section section-alt" id="features" aria-labelledby="features-heading">
-    <div class="container">
-      <h2 id="features-heading">できること</h2>
-      <ul class="grid grid-2 feature-list">
-        <li>レスポンシブ対応</li>
-        <li>独自ドメイン</li>
-        <li>お問い合わせフォーム</li>
-        <li>基本的なSEO対応</li>
-        <li>写真・営業時間・価格・お知らせの更新</li>
-        <li>Googleマップ設置</li>
-        <li>SNS連携</li>
-        <li>予約システム連携</li>
-      </ul>
-    </div>
-  </section>
-
-  <section class="section" id="demos" aria-labelledby="demos-heading">
+  <section class="section section-alt" id="demos" aria-labelledby="demos-heading">
     <div class="container">
       <h2 id="demos-heading">制作デモ：3つの架空サイトで見る仕上がり</h2>
       <p class="demos-intro">実際の制作イメージが伝わるよう、業種別の架空デモサイトを公開しています。デザイン・情報設計の一例としてご覧ください。</p>
@@ -221,94 +197,30 @@
           <span class="demo-tag">DEMO・架空サイト</span>
           <h3>美容サロン</h3>
           <p>上品でエディトリアルな一枚もの構成。完全予約制サロンを想定。</p>
-          <a class="demo-link" href="demos/salon/">サロンのデモを見る</a>
+          <a class="demo-link" href="/demos/salon/">サロンのデモを見る</a>
         </li>
         <li class="demo-card">
           <span class="demo-tag">DEMO・架空サイト</span>
           <h3>カフェ</h3>
           <p>温かみのあるオーガニックな構成。街角の喫茶店を想定。</p>
-          <a class="demo-link" href="demos/cafe/">カフェのデモを見る</a>
+          <a class="demo-link" href="/demos/cafe/">カフェのデモを見る</a>
         </li>
         <li class="demo-card">
           <span class="demo-tag">DEMO・架空サイト</span>
           <h3>リフォーム会社</h3>
           <p>信頼感のある技術的な構成。住宅リフォーム会社を想定。</p>
-          <a class="demo-link" href="demos/reform/">リフォームのデモを見る</a>
+          <a class="demo-link" href="/demos/reform/">リフォームのデモを見る</a>
         </li>
       </ul>
+      <a class="more-link" href="/demos/">制作デモ一覧を見る</a>
     </div>
   </section>
 
-  <section class="section" id="comparison" aria-labelledby="comparison-heading">
-    <div class="container">
-      <h2 id="comparison-heading">普通のホームページ制作との違い</h2>
-      <div class="table-wrap">
-        <table>
-          <caption class="sr-only">普通のホームページとチャットホームページの比較</caption>
-          <thead>
-            <tr>
-              <th scope="col">比較項目</th>
-              <th scope="col">普通のホームページ</th>
-              <th scope="col">チャットホームページ</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <th scope="row">公開後の更新方法</th>
-              <td>管理画面やCMSの操作が必要</td>
-              <td>チャットで伝えるだけ</td>
-            </tr>
-            <tr>
-              <th scope="row">更新にかかる時間</th>
-              <td>操作を調べる時間がかかることも</td>
-              <td>伝えるだけで完了</td>
-            </tr>
-            <tr>
-              <th scope="row">必要な知識</th>
-              <td>HTML・CMSなどの基礎知識</td>
-              <td>知識は不要</td>
-            </tr>
-            <tr>
-              <th scope="row">連絡方法</th>
-              <td>制作会社への都度連絡・調整</td>
-              <td>チャット一本化</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <section class="section section-alt" id="pricing" aria-labelledby="pricing-heading">
+  <section class="section" id="pricing" aria-labelledby="pricing-heading">
     <div class="container container-narrow">
       <h2 id="pricing-heading">料金について</h2>
-      <p class="pricing-note">料金は事業内容やご要望により異なるため、<strong>個別お見積もり</strong>とさせていただいております。</p>
-      <div class="pricing-blocks">
-        <div class="pricing-block">
-          <h3>初期制作費</h3>
-          <p>ヒアリング内容をもとにしたホームページの制作費用です。ページ数やご要望に応じてお見積もりします。</p>
-        </div>
-        <div class="pricing-block">
-          <h3>月額チャット運用費</h3>
-          <p>公開後、チャットでの更新対応を継続していただくための月額費用です。運用内容に応じてご案内します。</p>
-        </div>
-      </div>
-      <p>まずは無料相談で、内容とご予算感をお伺いします。</p>
-      <a class="btn btn-primary" href="#contact">無料相談する</a>
-    </div>
-  </section>
-
-  <section class="section" id="flow" aria-labelledby="flow-heading">
-    <div class="container container-narrow">
-      <h2 id="flow-heading">ご利用の流れ</h2>
-      <ol class="timeline">
-        <li><span class="timeline-num">1</span><div><h3>無料相談</h3><p>まずはお気軽にご相談ください。</p></div></li>
-        <li><span class="timeline-num">2</span><div><h3>ヒアリング</h3><p>事業内容やご希望を詳しく伺います。</p></div></li>
-        <li><span class="timeline-num">3</span><div><h3>デザイン</h3><p>ヒアリング内容をもとにデザインを制作します。</p></div></li>
-        <li><span class="timeline-num">4</span><div><h3>確認</h3><p>内容をご確認いただき、必要な調整を行います。</p></div></li>
-        <li><span class="timeline-num">5</span><div><h3>公開</h3><p>ホームページを公開します。</p></div></li>
-        <li><span class="timeline-num">6</span><div><h3>チャット運用</h3><p>公開後は、チャットで更新依頼を伝えるだけです。</p></div></li>
-      </ol>
+      <p class="pricing-note">料金は事業内容やご要望により異なるため、<strong>個別お見積もり</strong>とさせていただいております。初期制作費と、公開後のチャット運用費（月額）の2段構成です。</p>
+      <a class="more-link" href="/price/">料金を詳しく見る</a>
     </div>
   </section>
 
@@ -329,26 +241,11 @@
           <p>はい、独自ドメインでの公開に対応しています。</p>
         </details>
         <details>
-          <summary>WordPressですか？</summary>
-          <p>特定のCMSに限定していません。運用内容に合わせて最適な仕組みで制作します。</p>
-        </details>
-        <details>
-          <summary>写真は自分で用意する必要がありますか？</summary>
-          <p>お手持ちの写真をご用意いただくのが基本ですが、ご相談内容に応じて対応方法をご案内します。</p>
-        </details>
-        <details>
           <summary>更新回数に制限はありますか？</summary>
           <p>運用プランによって異なります。ご希望の更新頻度をヒアリングのうえご案内します。</p>
         </details>
-        <details>
-          <summary>解約や引き渡しはできますか？</summary>
-          <p>可能です。解約時の対応方法についても事前にご案内します。</p>
-        </details>
-        <details>
-          <summary>既存サイトからの移行は可能ですか？</summary>
-          <p>可能です。現在のサイト内容を伺ったうえで移行方法をご提案します。</p>
-        </details>
       </div>
+      <a class="more-link" href="/faq/">よくある質問をすべて見る</a>
     </div>
   </section>
 
@@ -376,6 +273,16 @@
 <footer class="site-footer">
   <div class="container footer-inner">
     <p>チャットホームページ</p>
+    <nav class="footer-nav" aria-label="フッターナビゲーション">
+      <ul>
+        <li><a href="/">トップ</a></li>
+        <li><a href="/service/">サービス</a></li>
+        <li><a href="/price/">料金</a></li>
+        <li><a href="/flow/">流れ</a></li>
+        <li><a href="/demos/">デモ</a></li>
+        <li><a href="/faq/">FAQ</a></li>
+      </ul>
+    </nav>
     <p>&copy; <span id="current-year">2026</span> チャットホームページ</p>
   </div>
 </footer>

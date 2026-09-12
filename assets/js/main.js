@@ -30,6 +30,27 @@
     });
   }
 
+  function initGuideLinks() {
+    var navList = document.querySelector("#site-nav ul");
+    if (navList && !navList.querySelector('a[href="guide/"]')) {
+      var item = document.createElement("li");
+      var link = document.createElement("a");
+      link.href = "guide/";
+      link.textContent = "CHシステム使い方";
+      item.appendChild(link);
+      navList.appendChild(item);
+    }
+
+    var heroActions = document.querySelector(".hero-actions");
+    if (heroActions && !heroActions.querySelector('a[href="guide/"]')) {
+      var guideLink = document.createElement("a");
+      guideLink.className = "btn btn-ghost";
+      guideLink.href = "guide/";
+      guideLink.textContent = "CHシステムの使い方";
+      heroActions.appendChild(guideLink);
+    }
+  }
+
   function initCurrentYear() {
     var el = document.getElementById("current-year");
     if (!el) return;
@@ -74,6 +95,7 @@
 
   document.addEventListener("DOMContentLoaded", function () {
     safeInit(initNavToggle);
+    safeInit(initGuideLinks);
     safeInit(initCurrentYear);
     safeInit(initRevealOnScroll);
   });

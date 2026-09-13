@@ -38,10 +38,11 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf .deploy .rollback
-          mkdir -p .deploy/assets/css .deploy/assets/js
+          mkdir -p .deploy/assets/css .deploy/assets/js .deploy/assets/img
           cp index.html favicon.svg robots.txt sitemap.xml .nojekyll .htaccess google10b52f5d3ce8d9fd.html .deploy/
           cp assets/css/styles.css .deploy/assets/css/
           cp assets/js/main.js .deploy/assets/js/
+          cp assets/img/chat-homepage-logo.png .deploy/assets/img/
           mkdir -p .deploy/demos/salon .deploy/demos/cafe .deploy/demos/reform .deploy/guide/context
           cp demos/salon/index.html demos/salon/styles.css .deploy/demos/salon/
           cp demos/cafe/index.html demos/cafe/styles.css .deploy/demos/cafe/
@@ -53,6 +54,7 @@ jobs:
           test -f .deploy/.htaccess
           test -f .deploy/google10b52f5d3ce8d9fd.html
           test -f .deploy/release.txt
+          test -f .deploy/assets/img/chat-homepage-logo.png
           test -f .deploy/demos/salon/index.html
           test -f .deploy/demos/cafe/index.html
           test -f .deploy/demos/reform/index.html
@@ -134,7 +136,7 @@ jobs:
             "$PRODUCTION_URL/guide/context/?v=$bust" > /tmp/context.html
           grep -q 'context-final' /tmp/context.html
           grep -q 'data-copy' /tmp/context.html
-          for asset in guide/styles.css guide/guide.js guide/context/context.css; do
+          for asset in assets/img/chat-homepage-logo.png guide/styles.css guide/guide.js guide/context/context.css; do
             curl --fail --silent --show-error --retry 3 -o /dev/null \
               "$PRODUCTION_URL/$asset?v=$bust"
           done

@@ -150,6 +150,7 @@ img { max-width: 100%; display: block; }
 
 .header-inner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 1rem;
   padding-block: 0.9rem;
@@ -191,6 +192,11 @@ img { max-width: 100%; display: block; }
 .js .nav-toggle { display: inline-flex; }
 .js .site-nav { display: none; }
 .js .site-nav[data-open="true"] { display: block; }
+
+@media (max-width: 640px) {
+  .btn-header { display: none; }
+  .nav-toggle { margin-left: auto; }
+}
 
 .site-nav ul {
   display: flex;

@@ -12,6 +12,7 @@ on:
       - 'sitemap.xml'
       - '.nojekyll'
       - '.htaccess'
+      - 'google10b52f5d3ce8d9fd.html'
       - 'assets/**'
       - 'demos/**'
       - 'guide/**'
@@ -38,7 +39,7 @@ jobs:
           set -euo pipefail
           rm -rf .deploy .rollback
           mkdir -p .deploy/assets/css .deploy/assets/js
-          cp index.html favicon.svg robots.txt sitemap.xml .nojekyll .htaccess .deploy/
+          cp index.html favicon.svg robots.txt sitemap.xml .nojekyll .htaccess google10b52f5d3ce8d9fd.html .deploy/
           cp assets/css/styles.css .deploy/assets/css/
           cp assets/js/main.js .deploy/assets/js/
           mkdir -p .deploy/demos/salon .deploy/demos/cafe .deploy/demos/reform .deploy/guide/context
@@ -50,6 +51,7 @@ jobs:
           printf '%s\n' "$GITHUB_SHA" > .deploy/release.txt
           test -f .deploy/index.html
           test -f .deploy/.htaccess
+          test -f .deploy/google10b52f5d3ce8d9fd.html
           test -f .deploy/release.txt
           test -f .deploy/demos/salon/index.html
           test -f .deploy/demos/cafe/index.html
@@ -121,6 +123,9 @@ jobs:
           curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
             "$PRODUCTION_URL/release.txt?v=$bust" > /tmp/release.txt
           grep -Fxq "$GITHUB_SHA" /tmp/release.txt
+          curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
+            "$PRODUCTION_URL/google10b52f5d3ce8d9fd.html?v=$bust" > /tmp/google-verification.html
+          grep -Fxq 'google-site-verification: google10b52f5d3ce8d9fd.html' /tmp/google-verification.html
           for path in demos/salon/ demos/cafe/ demos/reform/ guide/ guide/context/; do
             curl --fail --silent --show-error --retry 3 -o /dev/null \
               "$PRODUCTION_URL/$path?v=$bust"

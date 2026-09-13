@@ -12,36 +12,40 @@
     liveRegion.textContent = text;
   }
 
+  function copyText(text) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      try { document.execCommand("copy") ? resolve() : reject(); } catch (error) { reject(error); }
+      document.body.removeChild(area);
+    });
+  }
+
   function initCopyButtons() {
-    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") return;
-
     var liveRegion = document.querySelector(".g-live-region");
-    var targets = document.querySelectorAll("[data-copy]");
-
-    targets.forEach(function (el) {
+    document.querySelectorAll("[data-copy]").forEach(function (el) {
       var button = document.createElement("button");
       button.type = "button";
       button.className = "copy-btn";
       button.textContent = "コピー";
       button.setAttribute("aria-label", "文例をコピー");
-
       button.addEventListener("click", function () {
-        var text = el.textContent.trim();
-        navigator.clipboard.writeText(text).then(
-          function () {
-            var original = button.textContent;
-            button.textContent = "コピーしました";
-            announce(liveRegion, "文例をコピーしました");
-            window.setTimeout(function () {
-              button.textContent = original;
-            }, 2000);
-          },
-          function () {
-            /* Clipboard write failed; leave button state unchanged. */
-          }
-        );
+        copyText(el.textContent.trim()).then(function () {
+          button.textContent = "コピーしました";
+          announce(liveRegion, "文例をコピーしました");
+          window.setTimeout(function () { button.textContent = "コピー"; }, 2000);
+        }, function () {
+          button.textContent = "文章を長押ししてコピー";
+          announce(liveRegion, "コピーできませんでした。文章を長押ししてコピーしてください");
+          window.setTimeout(function () { button.textContent = "コピー"; }, 3500);
+        });
       });
-
       el.insertAdjacentElement("afterend", button);
     });
   }

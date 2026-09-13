@@ -125,6 +125,14 @@ jobs:
             curl --fail --silent --show-error --retry 3 -o /dev/null \
               "$PRODUCTION_URL/$path?v=$bust"
           done
+          curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
+            "$PRODUCTION_URL/guide/context/?v=$bust" > /tmp/context.html
+          grep -q 'context-final' /tmp/context.html
+          grep -q 'data-copy' /tmp/context.html
+          for asset in guide/styles.css guide/guide.js guide/context/context.css; do
+            curl --fail --silent --show-error --retry 3 -o /dev/null \
+              "$PRODUCTION_URL/$asset?v=$bust"
+          done
       - name: Restore previous production on failure
         if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
         env:

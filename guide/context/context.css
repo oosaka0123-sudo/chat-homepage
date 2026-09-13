@@ -24,3 +24,5 @@
 #signs,#handoff,#template,#still-slow,#avoid{scroll-margin-top:110px}
 @media (max-width:900px){.handoff-flow{grid-template-columns:1fr;gap:12px}.handoff-arrow{transform:rotate(90deg)}}
 @media (max-width:560px){.context-hero{padding:58px 0 64px}.context-hero h1{font-size:clamp(1.8rem,7.8vw,2.7rem)}.sign-grid{grid-template-columns:1fr}.context-section{padding:68px 0}.context-alert{padding:17px}.context-final{align-items:flex-start}.context-final .final-icon{width:50px;height:50px;border-radius:15px}.context-back{width:100%}}
+
+@media (max-width:900px){#signs,#handoff,#template,#still-slow,#avoid{scroll-margin-top:180px}}

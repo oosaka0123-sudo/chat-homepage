@@ -657,3 +657,27 @@ thead th {
     transform: none;
   }
 }
+
+/* Unified CH brand header */
+:root{--color-accent:#0b6fd3;--color-accent-ink:#fff}
+.btn-primary:hover{background:#075fbd;border-color:#075fbd}
+.site-header{background:rgba(247,244,238,.96);backdrop-filter:blur(14px)}
+html:not(.js) .site-header{position:relative}
+.logo{display:flex;align-items:center;min-width:0;margin-right:auto}
+.logo img{width:230px;height:auto}
+.nav-toggle{position:relative;width:48px;height:48px;min-width:48px;min-height:48px;padding:0;border-radius:50%;background:#fff;border:1px solid var(--color-line)}
+.hamburger{display:grid;gap:5px;width:20px}.hamburger i{display:block;height:2px;border-radius:999px;background:var(--color-ink)}
+.mobile-nav-cta{display:none}
+@media (max-width:1023px){
+  .header-inner{position:relative;gap:.75rem;padding-block:.65rem}
+  .js .header-inner{flex-wrap:nowrap}
+  .logo img{width:min(58vw,220px)}
+  .js .nav-toggle{display:grid;order:2;margin-left:auto}
+  .btn-header{display:none!important}
+  .js .site-nav{position:absolute;top:calc(100% + 1px);left:1.25rem;right:1.25rem;z-index:220;display:none;max-height:calc(100vh - 96px);overflow:auto;background:#fff;border:1px solid var(--color-line);border-radius:18px;box-shadow:0 22px 60px rgba(24,29,39,.16);padding:.45rem}
+  .js .site-nav[data-open="true"]{display:block}
+  .site-nav ul{padding:0;gap:0}.site-nav a{padding:.78rem .8rem;border-radius:10px;border-bottom:1px solid #ece8df}
+  .site-nav li:last-child a{border-bottom:0}.mobile-nav-cta{display:flex;margin:.55rem .45rem .35rem;border-radius:12px}
+}
+@media (max-width:360px){.logo img{width:min(60vw,184px)}}
+@media (min-width:1024px){.mobile-nav-cta{display:none!important}.logo img{width:220px}}

@@ -44,12 +44,13 @@
 
 <header class="site-header">
   <div class="container header-inner">
-    <a class="logo" href="#top">チャットホームページ</a>
-    <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="site-nav">
-      <span class="nav-toggle-label">メニュー</span>
+    <a class="logo" href="#top" aria-label="チャットホームページ トップへ"><img src="assets/img/chat-homepage-logo.png" alt="チャットホームページ CH" width="1400" height="500"></a>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="メニューを開く">
+      <span class="hamburger" aria-hidden="true"><i></i><i></i><i></i></span><span class="sr-only">メニュー</span>
     </button>
     <nav class="site-nav" id="site-nav" aria-label="サイト内ナビゲーション">
       <ul>
+        <li><a href="#top">ホーム</a></li>
         <li><a href="#pains">こんな悩み</a></li>
         <li><a href="#benefits">選ばれる理由</a></li>
         <li><a href="#how-it-works">はじめかた</a></li>
@@ -61,6 +62,7 @@
         <li><a href="#faq">よくある質問</a></li>
         <li><a href="guide/">CHシステム使い方</a></li>
       </ul>
+      <a class="btn btn-primary mobile-nav-cta" href="#contact">無料相談する</a>
     </nav>
     <a class="btn btn-primary btn-header" href="#contact">無料相談する</a>
   </div>

@@ -47,7 +47,7 @@ jobs:
           cp assets/css/styles.css .deploy/assets/css/
           cp assets/js/main.js .deploy/assets/js/
           cp assets/img/chat-homepage-logo.png .deploy/assets/img/
-          mkdir -p .deploy/service .deploy/price .deploy/flow .deploy/faq .deploy/demos/salon .deploy/demos/cafe .deploy/demos/reform .deploy/guide/context .deploy/guide/setup .deploy/guide/free-limits
+          mkdir -p .deploy/service .deploy/price .deploy/flow .deploy/faq .deploy/demos/salon .deploy/demos/cafe .deploy/demos/reform .deploy/guide/context .deploy/guide/setup .deploy/guide/free-limits .deploy/guide/direct-edit
           cp service/index.html .deploy/service/
           cp price/index.html .deploy/price/
           cp flow/index.html .deploy/flow/
@@ -60,6 +60,7 @@ jobs:
           cp guide/context/index.html guide/context/context.css .deploy/guide/context/
           cp guide/setup/index.html guide/setup/setup.css .deploy/guide/setup/
           cp guide/free-limits/index.html guide/free-limits/free-limits.css .deploy/guide/free-limits/
+          cp guide/direct-edit/index.html .deploy/guide/direct-edit/
           printf '%s\n' "$GITHUB_SHA" > .deploy/release.txt
           test -f .deploy/index.html
           test -f .deploy/.htaccess
@@ -83,10 +84,12 @@ jobs:
           test -f .deploy/guide/setup/setup.css
           test -f .deploy/guide/free-limits/index.html
           test -f .deploy/guide/free-limits/free-limits.css
+          test -f .deploy/guide/direct-edit/index.html
           grep -q 'noindex,nofollow' .deploy/guide/index.html
           grep -q 'noindex,nofollow' .deploy/guide/context/index.html
           grep -q 'noindex,nofollow' .deploy/guide/setup/index.html
           grep -q 'noindex,nofollow' .deploy/guide/free-limits/index.html
+          grep -q 'noindex,nofollow' .deploy/guide/direct-edit/index.html
           ! find .deploy -iname '*.md' | grep -q .
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
@@ -150,7 +153,7 @@ jobs:
           curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
             "$PRODUCTION_URL/google10b52f5d3ce8d9fd.html?v=$bust" > /tmp/google-verification.html
           grep -Fxq 'google-site-verification: google10b52f5d3ce8d9fd.html' /tmp/google-verification.html
-          for path in service/ price/ flow/ demos/ faq/ demos/salon/ demos/cafe/ demos/reform/ guide/ guide/context/ guide/setup/ guide/free-limits/; do
+          for path in service/ price/ flow/ demos/ faq/ demos/salon/ demos/cafe/ demos/reform/ guide/ guide/context/ guide/setup/ guide/free-limits/ guide/direct-edit/; do
             curl --fail --silent --show-error --retry 3 -o /dev/null \
               "$PRODUCTION_URL/$path?v=$bust"
           done
@@ -158,6 +161,9 @@ jobs:
             "$PRODUCTION_URL/guide/context/?v=$bust" > /tmp/context.html
           grep -q 'context-final' /tmp/context.html
           grep -q 'data-copy' /tmp/context.html
+          curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
+            "$PRODUCTION_URL/guide/direct-edit/?v=$bust" > /tmp/direct-edit.html
+          grep -q 'ホームページを直接編集したい方へ' /tmp/direct-edit.html
           for asset in assets/img/chat-homepage-logo.png guide/styles.css guide/guide.js guide/context/context.css guide/setup/setup.css guide/free-limits/free-limits.css; do
             curl --fail --silent --show-error --retry 3 -o /dev/null \
               "$PRODUCTION_URL/$asset?v=$bust"

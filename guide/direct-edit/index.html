@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ホームページを直接編集したい方へ | CHシステム 使い方ガイド</title>
+<meta name="description" content="ChatGPTからホームページ本体を直接変更するために必要なGitHub接続と編集権限について、はじめての方にも分かりやすくご案内します。">
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../styles.css">
+<script defer src="../guide.js"></script>
+<style>
+  .direct-hero{padding:clamp(72px,10vw,132px) 0 56px;background:linear-gradient(180deg,#f4f8ff 0%,#fff 100%)}
+  .direct-hero .container{max-width:900px}
+  .direct-hero h1{margin:.35em 0 .45em;font-size:clamp(2.25rem,6vw,4.9rem);line-height:1.04;letter-spacing:-.045em}
+  .direct-hero .lead{max-width:760px;font-size:clamp(1.05rem,2vw,1.28rem);line-height:1.9;color:#42526b}
+  .direct-hero .lead strong{color:#0e1726}
+  .direct-nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+  .direct-section{padding:72px 0}
+  .direct-section.alt{background:#f7f9fc}
+  .direct-wrap{max-width:900px}
+  .direct-kicker{display:inline-flex;align-items:center;gap:.5em;margin:0 0 12px;font-weight:800;color:#2762d9;letter-spacing:.04em}
+  .direct-section h2{margin:0 0 20px;font-size:clamp(1.7rem,4vw,2.8rem);line-height:1.25;letter-spacing:-.025em}
+  .direct-section p{font-size:1.06rem;line-height:1.9;color:#42526b}
+  .notice-card,.permission-card,.final-card{border:1px solid #dce3ee;border-radius:24px;background:#fff;padding:clamp(24px,5vw,42px);box-shadow:0 18px 60px rgba(23,40,74,.07)}
+  .notice-card{border-left:6px solid #2762d9}
+  .notice-card strong{display:block;margin-bottom:10px;font-size:1.2rem;color:#0e1726}
+  .capability-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:28px 0 0;padding:0;list-style:none}
+  .capability-grid li{position:relative;padding:20px 20px 20px 52px;border:1px solid #e0e6ef;border-radius:18px;background:#fff;font-weight:750;color:#172033}
+  .capability-grid li::before{content:'✓';position:absolute;left:20px;top:18px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#eaf2ff;color:#2762d9;font-size:.9rem}
+  .steps-simple{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:30px}
+  .step-simple{padding:26px;border:1px solid #dce3ee;border-radius:22px;background:#fff}
+  .step-simple b{display:grid;place-items:center;width:42px;height:42px;margin-bottom:18px;border-radius:14px;background:#0f1728;color:#fff;font-size:1.05rem}
+  .step-simple h3{margin:0 0 8px;font-size:1.08rem}
+  .step-simple p{margin:0;font-size:.96rem;line-height:1.7}
+  .example-box{margin-top:28px;padding:24px;border-radius:20px;background:#0f1728;color:#fff}
+  .example-box p{margin:8px 0;color:#dbe5f5;font-size:1rem}
+  .example-box strong{color:#fff}
+  .permission-card{background:linear-gradient(145deg,#fff8e8,#fff)}
+  .permission-card h3{margin-top:0;font-size:1.35rem}
+  .permission-list{margin:18px 0 0;padding-left:1.25em;color:#4a4f59;line-height:1.9}
+  .final-card{text-align:center;background:#0f1728;color:#fff}
+  .final-card h2{color:#fff}
+  .final-card p{max-width:670px;margin-left:auto;margin-right:auto;color:#d9e3f0}
+  .final-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:28px}
+  @media(max-width:760px){
+    .direct-section{padding:54px 0}
+    .capability-grid,.steps-simple{grid-template-columns:1fr}
+    .direct-hero{padding-top:56px}
+    .direct-hero h1{font-size:clamp(2.35rem,12vw,4rem)}
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">本文へスキップ</a>
+
+<header class="g-header">
+  <div class="container g-header-inner">
+    <a class="g-brand" href="../" aria-label="CHシステム 使い方ガイドへ戻る">
+      <img class="g-brand-logo" src="../../assets/img/chat-homepage-logo.png" alt="チャットホームページ CH" width="1400" height="500">
+      <span class="g-section-label">CHシステム 使い方ガイド</span>
+    </a>
+    <nav class="g-mini-nav" aria-label="ページナビゲーション">
+      <a href="../">使い方ガイド</a>
+      <a href="../setup/">初期設定</a>
+      <a href="../../">トップページ</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="direct-hero">
+    <div class="container">
+      <p class="eyebrow">ホームページ本体まで変更したい方へ</p>
+      <h1>ホームページを<br>直接編集したい方へ</h1>
+      <p class="lead">このホームページは、<strong>GitHub（ギットハブ）</strong>という場所に保存されています。ChatGPTで「このボタンを消して」「文章を変えて」「写真を差し替えて」とお願いして、実際のホームページまで直接変更する場合は、GitHubの接続が必要です。</p>
+      <div class="direct-nav">
+        <a class="btn btn-primary" href="#connection">必要な設定を見る</a>
+        <a class="btn btn-secondary" href="#permissions">大切な注意点</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="direct-section" aria-labelledby="share-title">
+    <div class="container direct-wrap">
+      <p class="direct-kicker">まず知っておくこと</p>
+      <h2 id="share-title">共有チャットに入るだけでは編集できません</h2>
+      <div class="notice-card">
+        <strong>共有プロジェクトへの参加と、ホームページ本体の編集権限は別です。</strong>
+        <p>共有プロジェクトに参加すると、ChatGPTとの会話や修正依頼はできます。ただし、それだけではホームページ本体を書き換えることはできません。</p>
+        <p>実際にホームページを変更するには、<strong>GitHubへの接続と編集権限</strong>が必要です。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="direct-section alt" aria-labelledby="cando-title">
+    <div class="container direct-wrap">
+      <p class="direct-kicker">GitHubを接続すると</p>
+      <h2 id="cando-title">ChatGPTへのお願いを、そのままホームページへ反映できます</h2>
+      <p>接続と権限設定が終わると、普段の会話と同じように変更内容を伝えられます。</p>
+      <ul class="capability-grid">
+        <li>ボタンの削除・追加</li>
+        <li>文章の変更</li>
+        <li>写真の差し替え</li>
+        <li>新しいページの追加</li>
+        <li>デザインの修正</li>
+        <li>既存ページの更新</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="direct-section" id="connection" aria-labelledby="connection-title">
+    <div class="container direct-wrap">
+      <p class="direct-kicker">設定は基本的に最初だけ</p>
+      <h2 id="connection-title">最初に1回だけ、GitHubを接続します</h2>
+      <p>GitHubの接続は、基本的に最初の1回だけです。接続後は、普段どおりChatGPTに修正内容を伝えるだけで進められます。</p>
+
+      <div class="steps-simple">
+        <article class="step-simple">
+          <b>1</b>
+          <h3>GitHubを接続</h3>
+          <p>ChatGPTから対象のGitHubへアクセスできる状態にします。</p>
+        </article>
+        <article class="step-simple">
+          <b>2</b>
+          <h3>編集権限を確認</h3>
+          <p>見るだけではなく、対象ホームページを変更できる権限が必要です。</p>
+        </article>
+        <article class="step-simple">
+          <b>3</b>
+          <h3>いつもの言葉で依頼</h3>
+          <p>接続後は専門用語を使わず、変更したい内容をそのまま伝えます。</p>
+        </article>
+      </div>
+
+      <div class="example-box" aria-label="依頼例">
+        <strong>接続後の依頼例</strong>
+        <p>「この文章を変えて」</p>
+        <p>「このボタンを消して」</p>
+        <p>「新しいページを作って」</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="direct-section alt" id="permissions" aria-labelledby="permissions-title">
+    <div class="container direct-wrap">
+      <p class="direct-kicker">大切なこと</p>
+      <h2 id="permissions-title">接続する権限は、このホームページだけに限定するのがおすすめです</h2>
+      <div class="permission-card">
+        <h3>GitHubは、ホームページ本体を編集できる大切な場所です。</h3>
+        <p>必要以上に広いアクセス権を渡す必要はありません。対象となるホームページのリポジトリだけを選び、必要な編集権限だけを許可する運用がおすすめです。</p>
+        <ul class="permission-list">
+          <li>対象のホームページだけを接続する</li>
+          <li>関係のないGitHubリポジトリには権限を広げない</li>
+          <li>接続先が分からないときは、担当者に確認してから設定する</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="direct-section">
+    <div class="container direct-wrap">
+      <div class="final-card">
+        <p class="eyebrow">接続が終われば、操作はシンプルです</p>
+        <h2>あとは、変更したいことを<br>チャットで伝えるだけ。</h2>
+        <p>HTMLや管理画面を覚える必要はありません。変更したい内容を普段の言葉で伝えて、反映後のホームページを確認してください。</p>
+        <div class="final-actions">
+          <a class="btn btn-primary" href="../">CHシステム使い方ガイドへ戻る</a>
+          <a class="btn btn-secondary" href="../../">トップページへ戻る</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="g-footer">
+  <div class="container">
+    <p><a href="../">CHシステム 使い方ガイド</a> ／ <a href="../../">チャットホームページ</a></p>
+    <p>© チャットホームページ</p>
+  </div>
+</footer>
+</body>
+</html>

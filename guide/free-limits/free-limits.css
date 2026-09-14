@@ -1,0 +1,13 @@
+.limit-hero{padding:clamp(3.5rem,8vw,6.5rem) 0;background:linear-gradient(180deg,#f7f4ee 0%,#eef6ff 100%)}
+.limit-hero h1{font-size:clamp(2.25rem,7vw,4.75rem);line-height:1.08;letter-spacing:-.04em;margin:.4rem 0 1rem}
+.limit-hero h1 span{color:#1688f8}.limit-lead{font-size:clamp(1.05rem,2vw,1.25rem);line-height:1.9;max-width:46rem}
+.limit-good{margin-top:1.5rem;padding:1.25rem 1.35rem;border-radius:18px;background:#fff;border:1px solid #dfe9f3;box-shadow:0 14px 34px rgba(24,29,39,.07)}
+.limit-good strong,.safety-card strong,.official-box strong{display:block;margin-bottom:.4rem}.limit-good p,.safety-card p,.official-box p{margin:0}
+.limit-section{padding:clamp(3.5rem,7vw,6rem) 0}.limit-soft{background:#f7f4ee}.limit-section h2{font-size:clamp(1.75rem,4vw,2.8rem);margin:.3rem 0 1.5rem}
+.limit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}.limit-grid article{padding:1.35rem;border-radius:18px;background:#fff;border:1px solid #e3e0d9}
+.limit-grid h3{margin:.55rem 0 .45rem;font-size:1.08rem}.limit-grid p{margin:0;line-height:1.8;color:#55514a}
+.limit-chip{display:inline-flex;padding:.25rem .65rem;border-radius:999px;background:#e8f3ff;color:#0b6fd3;font-size:.82rem;font-weight:800}.limit-note{margin-top:1rem;font-size:.9rem;color:#6e6961}
+.ok-ng{display:grid;grid-template-columns:1fr 1fr;gap:1rem}.ok-ng>div{padding:1.35rem;border-radius:18px;background:#fff;border:1px solid #e3e0d9}.ok-ng ul{margin:.8rem 0 0;padding-left:1.2rem;line-height:1.9}
+.limit-steps{display:grid;gap:.8rem;padding:0;list-style:none}.limit-steps li{display:grid;grid-template-columns:42px 1fr;gap:.9rem;align-items:start;padding:1rem 0;border-bottom:1px solid #e3e0d9}.limit-steps li>span{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#1688f8;color:#fff;font-weight:900}.limit-steps h3{margin:0 0 .25rem}.limit-steps p{margin:0;color:#55514a;line-height:1.8}
+.safety-card{margin-top:1.5rem;padding:1.2rem 1.3rem;border-radius:16px;background:#fff4ef;border:1px solid #f0c7b6}.official-box{margin-top:1rem;padding:1.2rem 1.3rem;border-radius:16px;background:#eef6ff;border:1px solid #cfe4fb}.official-box a{font-weight:700;text-underline-offset:.2em}.limit-actions{display:flex;flex-wrap:wrap;gap:.8rem;margin-top:1.4rem}
+@media(max-width:760px){.limit-grid,.ok-ng{grid-template-columns:1fr}.limit-hero{padding-top:2.8rem}.limit-actions{display:grid}.limit-actions .btn{width:100%}}

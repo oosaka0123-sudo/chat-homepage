@@ -53,9 +53,9 @@ jobs:
           cp flow/index.html .deploy/flow/
           cp faq/index.html .deploy/faq/
           cp demos/index.html .deploy/demos/
-          cp demos/salon/index.html demos/salon/styles.css .deploy/demos/salon/
-          cp demos/cafe/index.html demos/cafe/styles.css .deploy/demos/cafe/
-          cp demos/reform/index.html demos/reform/styles.css .deploy/demos/reform/
+          cp demos/salon/*.html demos/salon/styles.css .deploy/demos/salon/
+          cp demos/cafe/*.html demos/cafe/styles.css .deploy/demos/cafe/
+          cp demos/reform/*.html demos/reform/styles.css .deploy/demos/reform/
           cp guide/index.html guide/styles.css guide/guide.js .deploy/guide/
           cp guide/context/index.html guide/context/context.css .deploy/guide/context/
           cp guide/setup/index.html guide/setup/setup.css .deploy/guide/setup/

@@ -902,3 +902,8 @@ html:not(.js) .site-header{position:relative}
   .portfolio-card{min-height:420px}
   .ownership-visual{min-height:300px}
 }
+
+/* Homepage keeps common-menu.js for deploy compatibility, but uses the native premium header UI. */
+.home-v2 [data-ch-common-menu]{display:none!important}
+@media(max-width:1023px){.home-v2 .nav-toggle{display:grid!important}}
+@media(min-width:1024px){.home-v2 .nav-toggle{display:none!important}}

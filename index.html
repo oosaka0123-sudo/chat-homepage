@@ -3,48 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>チャットホームページ | ホームページは、話すだけ。</title>
-<meta name="description" content="ホームページの制作はプロにおまかせ。公開後の更新も、チャットで伝えるだけ。管理画面もHTMLも触らずに、営業時間の変更や写真の差し替え、キャンペーン掲載ができます。">
+<title>チャットホームページ | 自分の言葉で、ホームページを動かす。</title>
+<meta name="description" content="プロが制作し、公開後はお客様自身がChatGPT＋GitHubで更新できるホームページ。初期制作150,000円〜、自分での更新は0円。必要な時だけサポートも利用できます。">
 <link rel="canonical" href="https://chat.rss7.net/">
 <meta name="robots" content="index,follow">
-
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ja_JP">
 <meta property="og:site_name" content="チャットホームページ">
-<meta property="og:title" content="チャットホームページ | ホームページは、話すだけ。">
-<meta property="og:description" content="制作はプロにおまかせ。公開後の変更も、チャットで伝えるだけ。管理画面を覚える必要はありません。">
+<meta property="og:title" content="チャットホームページ | 自分の言葉で、ホームページを動かす。">
+<meta property="og:description" content="制作後は、自分で更新。ChatGPT＋GitHubでホームページを育てられます。">
 <meta property="og:url" content="https://chat.rss7.net/">
-
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="チャットホームページ | ホームページは、話すだけ。">
-<meta name="twitter:description" content="制作はプロにおまかせ。公開後の変更も、チャットで伝えるだけ。">
-
+<meta name="twitter:title" content="チャットホームページ | 自分の言葉で、ホームページを動かす。">
+<meta name="twitter:description" content="初期制作150,000円〜。自分での更新は0円。">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/css/styles.css">
 <script defer src="assets/js/main.js"></script>
-
 <script type="application/ld+json">
 {
-  "@context": "https://schema.org",
-  "@type": "Service",
-  "name": "チャットホームページ",
-  "serviceType": "ホームページ制作・運用代行",
-  "description": "プロが最初にホームページを制作し、公開後の更新はチャットで依頼できるサービス。管理画面やHTMLの知識は不要です。",
-  "provider": {
-    "@type": "Organization",
-    "name": "チャットホームページ"
-  },
-  "areaServed": "JP",
-  "url": "https://chat.rss7.net/"
+  "@context":"https://schema.org",
+  "@type":"Service",
+  "name":"チャットホームページ",
+  "serviceType":"ホームページ制作・AI更新環境構築",
+  "description":"プロがホームページを制作し、公開後はお客様自身がChatGPTとGitHubを使って更新できるサービス。",
+  "provider":{"@type":"Organization","name":"チャットホームページ"},
+  "areaServed":"JP",
+  "url":"https://chat.rss7.net/"
 }
 </script>
 </head>
-<body>
+<body class="home-v2">
 <a class="skip-link" href="#main">本文へスキップ</a>
 
-<header class="site-header">
+<header class="site-header home-header">
   <div class="container header-inner">
-    <a class="logo" href="/" aria-label="チャットホームページ トップへ"><img src="/assets/img/chat-homepage-logo.png" alt="チャットホームページ CH" width="1400" height="500"></a>
+    <a class="logo" href="/" aria-label="チャットホームページ トップへ">
+      <img src="/assets/img/chat-homepage-logo.png" alt="チャットホームページ CH" width="1400" height="500">
+    </a>
     <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="メニューを開く">
       <span class="hamburger" aria-hidden="true"><i></i><i></i><i></i></span><span class="sr-only">メニュー</span>
     </button>
@@ -52,256 +47,234 @@
       <ul>
         <li><a href="/" aria-current="page">ホーム</a></li>
         <li><a href="/service/">サービス</a></li>
-        <li><a href="/price/">料金</a></li>
-        <li><a href="/flow/">ご利用の流れ</a></li>
         <li><a href="/demos/">制作デモ</a></li>
-        <li><a href="/faq/">よくある質問</a></li>
-        <li><a href="/guide/">CHシステム使い方</a></li>
+        <li><a href="/price/">料金</a></li>
+        <li><a href="/flow/">導入の流れ</a></li>
+        <li><a href="/faq/">FAQ</a></li>
       </ul>
-      <a class="btn btn-primary mobile-nav-cta" href="/#contact">無料相談する</a>
+      <a class="btn btn-primary mobile-nav-cta" href="#contact">無料相談する</a>
     </nav>
-    <a class="btn btn-primary btn-header" href="/#contact">無料相談する</a>
+    <a class="btn btn-primary btn-header" href="#contact">無料相談する</a>
   </div>
 </header>
 
 <main id="main">
-
-  <section class="hero" id="top" aria-labelledby="hero-heading">
-    <div class="container hero-inner">
-      <div class="hero-copy">
-        <h1 id="hero-heading">ホームページは、<br>話すだけ。</h1>
-        <p class="hero-sub">制作はプロにおまかせ。公開後の変更も、チャットで伝えるだけ。</p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="#contact">無料相談する</a>
-          <a class="btn btn-ghost" href="#how-it-works">仕組みを見る</a>
-          <a class="btn btn-ghost" href="/guide/">CHシステムの使い方</a>
-        </div>
+  <section class="premium-hero" aria-labelledby="hero-heading">
+    <div class="premium-hero-media" aria-hidden="true">
+      <div class="premium-hero-image"></div>
+      <div class="premium-hero-overlay"></div>
+    </div>
+    <div class="container premium-hero-inner">
+      <p class="eyebrow">WEBSITE × CHATGPT × GITHUB</p>
+      <h1 id="hero-heading">ホームページを、<br><span>自分の言葉で動かす。</span></h1>
+      <p class="premium-hero-lead">作るのはプロ。育てるのは、あなた。<br>公開後はChatGPTに話しかけるだけで、自分のホームページを更新できます。</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#contact">無料相談する</a>
+        <a class="btn btn-ghost-light" href="#system">仕組みを見る</a>
       </div>
-      <div class="hero-visual" aria-hidden="true">
-        <div class="hero-chat">
-          <div class="hero-chat-bubble hero-chat-bubble--user">営業時間を18時までに変えて</div>
-          <div class="hero-chat-bubble hero-chat-bubble--done">反映しました</div>
-          <div class="hero-chat-bubble hero-chat-bubble--user">この写真に差し替えて</div>
-        </div>
+      <div class="hero-facts" aria-label="サービス概要">
+        <div><small>START</small><strong>150,000円〜</strong></div>
+        <div><small>SELF UPDATE</small><strong>更新料 0円</strong></div>
+        <div><small>SUPPORT</small><strong>必要な時だけ</strong></div>
       </div>
     </div>
   </section>
 
-  <section class="section" id="pains" aria-labelledby="pains-heading">
-    <div class="container container-narrow">
-      <h2 id="pains-heading">こんな悩み、ありませんか？</h2>
-      <ul class="pain-list">
-        <li>何から始めればいいか分からない</li>
-        <li>公開後に更新できない</li>
-        <li>制作会社への連絡が面倒</li>
-        <li>管理画面を触りたくない</li>
-        <li>写真・営業時間をすぐ変えたい</li>
-      </ul>
+  <section class="statement-section">
+    <div class="container statement-grid">
+      <p class="eyebrow">A NEW WAY TO OWN YOUR WEBSITE</p>
+      <div>
+        <h2>「修正を依頼する」から、<br>「自分で変えられる」へ。</h2>
+        <p class="statement-copy">従来のホームページは、公開後の小さな修正でも制作会社への連絡が必要でした。チャットホームページは、制作後のサイトをお客様自身がChatGPT＋GitHubで更新できる設計です。</p>
+      </div>
     </div>
   </section>
 
-  <section class="section section-alt" id="benefits" aria-labelledby="benefits-heading">
+  <section class="system-section" id="system" aria-labelledby="system-heading">
     <div class="container">
-      <h2 id="benefits-heading">チャットホームページが選ばれる理由</h2>
-      <div class="grid grid-3">
-        <div class="benefit">
-          <h3>制作はプロ</h3>
-          <p>ヒアリングをもとに、専門スタッフがデザインから公開まで一貫して制作します。</p>
+      <div class="section-head split-head">
+        <div>
+          <p class="eyebrow">HOW IT WORKS</p>
+          <h2 id="system-heading">仕組みは、4ステップ。</h2>
         </div>
-        <div class="benefit">
-          <h3>更新はチャット</h3>
-          <p>公開後の変更依頼は、チャットで伝えるだけ。管理画面を開く必要はありません。</p>
-        </div>
-        <div class="benefit">
-          <h3>技術知識ゼロ</h3>
-          <p>HTMLもCMSもドメインの知識も不要です。伝えたいことを、そのまま伝えてください。</p>
-        </div>
+        <p>専門的な管理画面を覚える代わりに、普段使う言葉で更新します。</p>
       </div>
-    </div>
-  </section>
-
-  <section class="section" id="how-it-works" aria-labelledby="steps-heading">
-    <div class="container">
-      <h2 id="steps-heading">はじめかたは3ステップ</h2>
-      <ol class="steps">
-        <li class="step">
-          <span class="step-number">1</span>
-          <div class="step-body">
-            <h3>希望を話す</h3>
-            <p>どんなお店・会社か、どんなホームページにしたいかを教えてください。</p>
-          </div>
-        </li>
-        <li class="step">
-          <span class="step-number">2</span>
-          <div class="step-body">
-            <h3>こちらで制作</h3>
-            <p>ヒアリング内容をもとに、プロがデザインから制作までを担当します。</p>
-          </div>
-        </li>
-        <li class="step">
-          <span class="step-number">3</span>
-          <div class="step-body">
-            <h3>公開後はチャットで更新</h3>
-            <p>公開後に変えたいことがあれば、チャットで伝えるだけで反映されます。</p>
-          </div>
-        </li>
+      <ol class="system-steps">
+        <li><span>01</span><h3>制作</h3><p>ヒアリングをもとに、デザインから公開まで制作します。</p></li>
+        <li><span>02</span><h3>所有</h3><p>GitHubは原則お客様側で管理。サイト資産を自分で持てます。</p></li>
+        <li><span>03</span><h3>接続</h3><p>ChatGPTとGitHubをつなぎ、変更できる環境を初期設定します。</p></li>
+        <li><span>04</span><h3>更新</h3><p>「写真を変えて」「料金を直して」と伝えて更新します。</p></li>
       </ol>
     </div>
   </section>
 
-  <section class="section section-dark" id="chat-demo" aria-labelledby="chat-demo-heading">
-    <div class="container container-narrow">
-      <h2 id="chat-demo-heading">公開後の更新は、こんな感じです</h2>
-      <ul class="chat-demo" role="list">
-        <li class="chat-line chat-line--user">
-          <span class="chat-role">依頼</span>
-          <p>営業時間を18時までに変えて</p>
-        </li>
-        <li class="chat-line chat-line--done">
-          <span class="chat-role">反映</span>
-          <p>営業時間を更新しました。</p>
-        </li>
-        <li class="chat-line chat-line--user">
-          <span class="chat-role">依頼</span>
-          <p>この写真に差し替えて</p>
-        </li>
-        <li class="chat-line chat-line--done">
-          <span class="chat-role">反映</span>
-          <p>写真を差し替えました。</p>
-        </li>
-        <li class="chat-line chat-line--user">
-          <span class="chat-role">依頼</span>
-          <p>来週のキャンペーン載せて</p>
-        </li>
-        <li class="chat-line chat-line--done">
-          <span class="chat-role">反映</span>
-          <p>キャンペーン情報を掲載しました。</p>
-        </li>
-      </ul>
-      <p class="chat-demo-punch">本当にこれだけ</p>
+  <section class="live-demo-section" aria-labelledby="live-demo-heading">
+    <div class="container live-demo-grid">
+      <div class="live-demo-copy">
+        <p class="eyebrow">REAL OPERATION IMAGE</p>
+        <h2 id="live-demo-heading">こんな変更を、<br>自分でできます。</h2>
+        <p>文章変更、写真差し替え、営業時間、料金、ページ追加。毎回制作会社へ連絡しなくても進められます。</p>
+      </div>
+      <div class="chat-console" aria-label="ChatGPTでの更新イメージ">
+        <div class="console-top"><span></span><span></span><span></span><b>CHAT HOMEPAGE</b></div>
+        <div class="console-body">
+          <div class="console-msg user">営業時間を18時までに変えて</div>
+          <div class="console-msg ai">変更内容を確認しました。対象ページを更新します。</div>
+          <div class="console-code"><span>index.html</span><strong>18:00</strong><em>UPDATED</em></div>
+          <div class="console-msg user">この写真に差し替えて</div>
+          <div class="console-msg ai">画像を差し替え、表示崩れがないか確認します。</div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="section" id="use-cases" aria-labelledby="use-cases-heading">
+  <section class="portfolio-section" aria-labelledby="portfolio-heading">
     <div class="container">
-      <h2 id="use-cases-heading">こんな事業者様に</h2>
-      <ul class="grid grid-3 use-case-list">
-        <li>建築・工務店</li>
-        <li>店舗</li>
-        <li>美容</li>
-        <li>飲食</li>
-        <li>会社</li>
-        <li>個人事業</li>
-      </ul>
+      <div class="section-head split-head">
+        <div>
+          <p class="eyebrow">SELECTED DEMOS</p>
+          <h2 id="portfolio-heading">見た目まで、妥協しない。</h2>
+        </div>
+        <p>更新しやすいだけではなく、最初の制作クオリティも重視します。</p>
+      </div>
+      <div class="portfolio-grid">
+        <a class="portfolio-card portfolio-card-large" href="/demos/salon/">
+          <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1600&q=84" alt="美容サロンの制作デモ" loading="lazy">
+          <span class="portfolio-shade"></span>
+          <div class="portfolio-meta"><small>BEAUTY / DEMO</small><h3>Hair Atelier 凪</h3><p>写真と余白で魅せる、上質なサロンサイト。</p></div>
+        </a>
+        <a class="portfolio-card" href="/demos/cafe/">
+          <img src="https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=1200&q=84" alt="カフェの制作デモ" loading="lazy">
+          <span class="portfolio-shade"></span>
+          <div class="portfolio-meta"><small>CAFE / DEMO</small><h3>街角カフェ</h3><p>温度感まで伝える店舗サイト。</p></div>
+        </a>
+        <a class="portfolio-card" href="/demos/reform/">
+          <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=84" alt="住宅リフォーム会社の制作デモ" loading="lazy">
+          <span class="portfolio-shade"></span>
+          <div class="portfolio-meta"><small>ARCHITECTURE / DEMO</small><h3>リフォーム会社</h3><p>信頼と技術を伝える企業サイト。</p></div>
+        </a>
+      </div>
+      <p class="portfolio-more"><a class="more-link" href="/demos/">すべての制作デモを見る</a></p>
     </div>
   </section>
 
-  <section class="section section-alt" id="features" aria-labelledby="features-heading">
+  <section class="comparison-section" aria-labelledby="comparison-heading">
     <div class="container">
-      <h2 id="features-heading">できること</h2>
-      <p class="page-lead">スマホ対応、SEOの基本設定、写真や営業時間の更新など、ホームページ運用に必要な機能をまとめて対応します。</p>
-      <ul class="grid grid-2 feature-list">
-        <li>スマホ・タブレット対応</li><li>基本的なSEO対応</li><li>写真・営業時間・価格の更新</li><li>SNS・地図などの連携</li>
-      </ul>
-      <p><a class="more-link" href="/service/">サービス内容を詳しく見る</a></p>
+      <div class="section-head">
+        <p class="eyebrow">DIFFERENCE</p>
+        <h2 id="comparison-heading">普通のホームページ制作との違い。</h2>
+      </div>
+      <div class="compare-grid">
+        <div class="compare-card muted">
+          <small>TRADITIONAL</small>
+          <h3>従来型</h3>
+          <ul>
+            <li>変更のたびに制作会社へ依頼</li>
+            <li>更新待ちが発生しやすい</li>
+            <li>管理画面の操作を覚える場合もある</li>
+            <li>小さな変更でも費用が発生することがある</li>
+          </ul>
+        </div>
+        <div class="compare-card active">
+          <small>CHAT HOMEPAGE</small>
+          <h3>チャットホームページ</h3>
+          <ul>
+            <li>ChatGPTへ自分で指示</li>
+            <li>自分のタイミングで変更</li>
+            <li>コード知識は基本不要</li>
+            <li>自分で行う更新は当社への更新料0円</li>
+          </ul>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="section" id="demos" aria-labelledby="demos-heading">
+  <section class="pricing-preview" aria-labelledby="pricing-heading">
+    <div class="container pricing-preview-grid">
+      <div>
+        <p class="eyebrow">PRICE</p>
+        <h2 id="pricing-heading">料金は、最初から明確に。</h2>
+        <p>制作後に自分で更新するなら、更新のたびに当社へ料金を払う必要はありません。</p>
+      </div>
+      <div class="price-panel">
+        <div><small>初期制作</small><strong>150,000<span>円〜</span></strong></div>
+        <div><small>自分で更新</small><strong>0<span>円</span></strong></div>
+        <div><small>月額サポート</small><strong>3,000〜10,000<span>円 / 月</span></strong></div>
+        <p>AI更新環境・GitHub初期設定は初期制作費に含みます。大幅なデザイン変更・機能追加は別途お見積もりです。</p>
+        <a class="more-link" href="/price/">料金を詳しく見る</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="ownership-section" aria-labelledby="ownership-heading">
+    <div class="container ownership-grid">
+      <div class="ownership-visual" aria-hidden="true">
+        <span>YOUR WEBSITE</span>
+        <strong>YOUR<br>OWNERSHIP.</strong>
+      </div>
+      <div>
+        <p class="eyebrow">OWNERSHIP & SUPPORT</p>
+        <h2 id="ownership-heading">自分で持てる。<br>困った時は、頼れる。</h2>
+        <p>ホームページとGitHubは原則としてお客様側で管理します。当社にサポート用の編集権限を付与していただけば、トラブル時やご依頼時だけこちらで対応できます。</p>
+        <p><strong>自分で触れる。でも、ひとりにはしない。</strong></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="flow-preview" aria-labelledby="flow-heading">
     <div class="container">
-      <h2 id="demos-heading">制作デモ：3つの架空サイトで見る仕上がり</h2>
-      <p class="demos-intro">実際の制作イメージが伝わるよう、業種別の架空デモサイトを公開しています。デザイン・情報設計の一例としてご覧ください。</p>
-      <ul class="grid grid-3 demo-list">
-        <li class="demo-card">
-          <span class="demo-tag">DEMO・架空サイト</span>
-          <h3>美容サロン</h3>
-          <p>上品でエディトリアルな一枚もの構成。完全予約制サロンを想定。</p>
-          <a class="demo-link" href="demos/salon/">サロンのデモを見る</a>
-        </li>
-        <li class="demo-card">
-          <span class="demo-tag">DEMO・架空サイト</span>
-          <h3>カフェ</h3>
-          <p>温かみのあるオーガニックな構成。街角の喫茶店を想定。</p>
-          <a class="demo-link" href="demos/cafe/">カフェのデモを見る</a>
-        </li>
-        <li class="demo-card">
-          <span class="demo-tag">DEMO・架空サイト</span>
-          <h3>リフォーム会社</h3>
-          <p>信頼感のある技術的な構成。住宅リフォーム会社を想定。</p>
-          <a class="demo-link" href="demos/reform/">リフォームのデモを見る</a>
-        </li>
-      </ul>
+      <div class="section-head split-head">
+        <div><p class="eyebrow">PROCESS</p><h2 id="flow-heading">導入までの流れ。</h2></div>
+        <a class="more-link" href="/flow/">詳しい流れを見る</a>
+      </div>
+      <ol class="flow-strip">
+        <li><span>01</span><strong>無料相談</strong></li>
+        <li><span>02</span><strong>ヒアリング</strong></li>
+        <li><span>03</span><strong>デザイン・制作</strong></li>
+        <li><span>04</span><strong>GitHub・GPT設定</strong></li>
+        <li><span>05</span><strong>公開・自分で更新</strong></li>
+      </ol>
     </div>
   </section>
 
-  <section class="section" id="comparison" aria-labelledby="comparison-heading">
+  <section class="faq-preview" aria-labelledby="faq-heading">
     <div class="container container-narrow">
-      <h2 id="comparison-heading">普通のホームページ制作との違い</h2>
-      <p>制作後の更新を「管理画面の操作」ではなく「チャットで伝える」ことを中心にした運用です。必要な知識や更新方法の違いは、サービスページで詳しくご案内しています。</p>
-      <p><a class="more-link" href="/service/#comparison">違いを詳しく見る</a></p>
-    </div>
-  </section>
-
-  <section class="section section-alt" id="pricing" aria-labelledby="pricing-heading">
-    <div class="container container-narrow">
-      <h2 id="pricing-heading">料金について</h2>
-      <p class="pricing-note">事業内容やページ数、公開後の運用内容に合わせた<strong>個別お見積もり</strong>です。初期制作と月額運用の考え方を専用ページにまとめています。</p>
-      <p><a class="more-link" href="/price/">料金ページを見る</a></p>
-      <a class="btn btn-primary" href="#contact">無料相談する</a>
-    </div>
-  </section>
-
-  <section class="section" id="flow" aria-labelledby="flow-heading">
-    <div class="container container-narrow">
-      <h2 id="flow-heading">ご利用の流れ</h2>
-      <p>無料相談からヒアリング、制作、確認、公開、チャット運用までの詳しい流れは専用ページでご確認いただけます。</p>
-      <p><a class="more-link" href="/flow/">ご利用の流れを詳しく見る</a></p>
-    </div>
-  </section>
-
-  <section class="section section-alt" id="faq" aria-labelledby="faq-heading">
-    <div class="container container-narrow">
-      <h2 id="faq-heading">よくある質問</h2>
+      <p class="eyebrow">FAQ</p>
+      <h2 id="faq-heading">よくある質問。</h2>
       <div class="faq-list">
-        <details><summary>パソコンがなくても大丈夫ですか？</summary><p>はい。スマートフォンのチャットだけでご依頼いただけます。</p></details>
-        <details><summary>独自ドメインは使えますか？</summary><p>はい、独自ドメインでの公開に対応しています。</p></details>
-        <details><summary>更新回数に制限はありますか？</summary><p>運用プランによって異なります。ご希望の更新頻度をヒアリングのうえご案内します。</p></details>
+        <details><summary>本当に自分で更新できますか？</summary><p>はい。初期設定後は、ChatGPTへ自然な言葉で変更内容を伝えて更新する運用を想定しています。大きな変更は確認しながら進める方が安全です。</p></details>
+        <details><summary>月額サポートは必須ですか？</summary><p>必須ではありません。自分で運用できる場合は、月額サポートなしで利用できます。</p></details>
+        <details><summary>困った時は修正してもらえますか？</summary><p>はい。サポート用の編集権限を付与いただくことで、必要な時にこちらから対応できます。</p></details>
       </div>
-      <p><a class="more-link" href="/faq/">よくある質問をすべて見る</a></p>
+      <p><a class="more-link" href="/faq/">FAQをすべて見る</a></p>
     </div>
   </section>
 
-  <section class="section cta-final" aria-labelledby="cta-final-heading">
-    <div class="container container-narrow">
-      <h2 id="cta-final-heading">ホームページの管理画面、もう覚えなくていい。</h2>
-      <p>変更したいことは、チャットしてください。</p>
-      <a class="btn btn-primary" href="#contact">無料相談する</a>
+  <section class="final-cta" id="contact" aria-labelledby="cta-heading">
+    <div class="container final-cta-inner">
+      <p class="eyebrow">START YOUR WEBSITE</p>
+      <h2 id="cta-heading">作った後も、<br>自分で育てられるサイトへ。</h2>
+      <p>まずは作りたいサイトの内容をお聞かせください。</p>
+      <a class="btn btn-light" href="mailto:oosaka0123@gmail.com?subject=%E3%83%81%E3%83%A3%E3%83%83%E3%83%88%E3%83%9B%E3%83%BC%E3%83%A0%E3%83%9A%E3%83%BC%E3%82%B8%E3%81%AE%E7%84%A1%E6%96%99%E7%9B%B8%E8%AB%87">メールで無料相談する</a>
     </div>
   </section>
-
-  <section class="section" id="contact" aria-labelledby="contact-heading">
-    <div class="container container-narrow">
-      <h2 id="contact-heading">無料相談</h2>
-      <div class="contact-box">
-        <p>まずは無料相談で、事業内容とご希望をお聞かせください。</p>
-        <p class="contact-note">現在の無料相談窓口はメールです。事業内容やご希望をそのままお送りください。</p>
-        <p><a class="btn btn-primary" href="mailto:oosaka0123@gmail.com?subject=%E3%83%81%E3%83%A3%E3%83%83%E3%83%88%E3%83%9B%E3%83%BC%E3%83%A0%E3%83%9A%E3%83%BC%E3%82%B8%E3%81%AE%E7%84%A1%E6%96%99%E7%9B%B8%E8%AB%87">メールで相談する</a></p>
-      </div>
-    </div>
-  </section>
-
 </main>
 
-<footer class="site-footer">
+<footer class="site-footer premium-footer">
   <div class="container footer-inner">
-    <p>チャットホームページ</p>
-    <nav class="footer-nav" aria-label="フッターナビゲーション"><ul>
-      <li><a href="/">ホーム</a></li><li><a href="/service/">サービス</a></li><li><a href="/price/">料金</a></li><li><a href="/flow/">ご利用の流れ</a></li><li><a href="/demos/">制作デモ</a></li><li><a href="/faq/">よくある質問</a></li><li><a href="/guide/">CHシステム使い方</a></li>
-    </ul></nav>
-    <p>&copy; <span id="current-year">2026</span> チャットホームページ</p>
+    <p><strong>チャットホームページ</strong></p>
+    <nav class="footer-nav" aria-label="フッターナビゲーション">
+      <ul>
+        <li><a href="/service/">サービス</a></li>
+        <li><a href="/demos/">制作デモ</a></li>
+        <li><a href="/price/">料金</a></li>
+        <li><a href="/flow/">導入の流れ</a></li>
+        <li><a href="/faq/">FAQ</a></li>
+        <li><a href="/guide/">使い方ガイド</a></li>
+      </ul>
+    </nav>
+    <p>© <span id="current-year">2026</span> チャットホームページ</p>
   </div>
 </footer>
-
-<script defer src="/assets/js/common-menu.js"></script>
 </body>
 </html>

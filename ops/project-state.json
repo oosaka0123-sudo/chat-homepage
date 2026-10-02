@@ -4,12 +4,12 @@
   "state": "PLANNING",
   "active_issue": 11,
   "active_branch": "main",
-  "last_completed": "Issue #14 multi-page marketing structure is already live on main: /, /service/, /price/, /flow/, /demos/, /faq/. Search registration and post-launch checks are recorded as complete.",
-  "next_action": "Clean up stale repository state and merged work branches, then resume Issue #11 inquiry-flow planning without changing the current mailto flow until any required hard gate is approved.",
+  "last_completed": "Repository cleanup completed: Issue #14 is closed as delivered, the six-page marketing site is live, search/post-launch checks are complete, stale machine state was corrected, and obsolete merged/unrelated remote branches were removed.",
+  "next_action": "Resume Issue #11 inquiry-flow planning. Keep the current mailto consultation flow unchanged until any required hard gate for a new form, personal-data collection, external service, LINE integration, payment, or secret is explicitly approved.",
   "blockers": [],
   "retry_counts": {
     "self_heal": 0,
     "transient": 0
   },
-  "last_verified_at": "2026-10-03T05:55:00+09:00"
+  "last_verified_at": "2026-10-03T06:05:00+09:00"
 }

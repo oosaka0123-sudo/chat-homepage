@@ -1,6 +1,6 @@
 # HANDOFF — chat-homepage
 
-Updated: 2026-09-10 20:11 JST
+Updated: 2026-10-03 JST
 
 ## Source of truth
 - Repository: `oosaka0123-sudo/chat-homepage`
@@ -79,3 +79,84 @@ Resume Issue #11 after Issue #14 unless the user explicitly reprioritizes it.
 - Hard gate only for destructive/irreversible actions, payment, secrets/credentials, privacy/personal-data collection, or external account/service connections.
 - GitHub is the source of truth. On reconnect read: `git status` -> GitHub Issue/PR -> `ops/project-state.json` -> this `HANDOFF.md`.
 - Preserve existing demos and `/guide/` behavior unless a later approved task explicitly changes them.
+
+
+## 2026-10-03 — 公開後・検索登録 完了確認
+
+対象本番サイト: `https://chat.rss7.net/`
+
+### Google Search Console
+- 状態: 登録済み
+- URL Prefix Property: `https://chat.rss7.net/` を確認済み
+- Domain Property: `sc-domain:rss7.net` を確認済み
+- 既存プロパティは削除・重複作成していない
+- URL Prefix Property では「あなたは確認済みの所有者です」まで確認済み
+- `/sitemap.xml` は登録済み
+- sitemap 最終読込: 2026/09/24
+- 検出ページ数: 9
+- sitemap はエラー状態ではない
+- トップURL `https://chat.rss7.net/` のURL検査は操作自体は実行済みだが、Opera側の結果画面取得が不安定で、結果文言の最終取得だけ未確定
+- 上記URL検査の表示取得不安定は、所有権・sitemap・クロール可否の完了判定を妨げるものではない
+
+### Bing Webmaster Tools
+- 状態: 登録済み
+- `chat.rss7.net` を既存サイトとして使用
+- 重複登録なし
+- sitemap: 1件登録済み
+- エラー: 0
+- 警告: 0
+- Bing検出URL: 9
+
+### GA4 / GTM / Clarity
+- GA4 Measurement ID: 検出なし
+- GTM: 検出なし
+- Microsoft Clarity: 検出なし
+- 二重計測: なし
+- 今回は新規導入していない
+
+### 本番技術確認
+- 正式URL: `https://chat.rss7.net/`
+- HTTPS: 正常
+- HTTP → HTTPS: 301
+- `www.chat.rss7.net`: 使用していない
+- トップHTTPステータス: 200
+- `robots.txt`: 200 / 正常
+- `sitemap.xml`: 200 / XML正常 / 9URL
+- X-Robots-Tag: 問題なし
+- canonical: 公開検索対象ページで確認
+- `/guide/` と `/guide/direct-edit/`: `noindex,nofollow`。sitemap外で、利用ガイドとして意図的な設定
+- 404挙動: 正常
+- 主要内部リンク: 正常
+- 主要CSS / JS / 画像: 正常
+- モバイル 390px相当表示: 正常
+- 横スクロール: なし
+- ハンバーガーメニュー: 正常。表示されるメニューボタンは1つで、開閉後 `aria-expanded=true`
+- 主要CTA: 正常
+- Console error: 0
+- Page JavaScript error: 0
+- 問い合わせフォームはなく、相談導線は既存の `mailto:` 方式
+
+### 今回実施した修正
+1. `/demos/`
+   - canonical を追加: `https://chat.rss7.net/demos/`
+   - meta robots を追加: `index,follow`
+   - favicon 指定を追加: `/favicon.svg`
+   - これにより `/favicon.ico` の404を解消
+2. 上記修正は `main` へ反映済み
+3. GitHub Actions の本番デプロイ成功を確認
+4. 本番 `/demos/` で以下を再確認済み
+   - canonical 正常
+   - `index,follow` 正常
+   - favicon.svg 正常
+   - 404リソースなし
+
+### 完了判定
+- Google Search Console: 完了
+- Bing Webmaster Tools: 完了
+- GA4/GTM/Clarity確認: 完了
+- 公開後技術確認: 完了
+- 本人操作が必要な項目: なし
+
+### 今後の注意
+- Search ConsoleトップURL個別検査の結果文言は、必要になった時だけ再確認する。既存の登録・sitemapを触り直さない。
+- 検索登録や計測の再実行時も、既存プロパティ・既存sitemap・既存タグを先に確認し、重複作成しない。

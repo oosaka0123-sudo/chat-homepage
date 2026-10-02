@@ -3,7 +3,7 @@
   "project": "chat-homepage",
   "state": "PLANNING",
   "active_issue": 11,
-  "active_branch": "chore/repo-cleanup-20261003",
+  "active_branch": "main",
   "last_completed": "Issue #14 multi-page marketing structure is already live on main: /, /service/, /price/, /flow/, /demos/, /faq/. Search registration and post-launch checks are recorded as complete.",
   "next_action": "Clean up stale repository state and merged work branches, then resume Issue #11 inquiry-flow planning without changing the current mailto flow until any required hard gate is approved.",
   "blockers": [],

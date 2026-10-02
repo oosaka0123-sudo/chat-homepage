@@ -53,9 +53,10 @@ jobs:
           cp flow/index.html .deploy/flow/
           cp faq/index.html .deploy/faq/
           cp demos/index.html .deploy/demos/
-          cp demos/salon/*.html demos/salon/styles.css .deploy/demos/salon/
-          cp demos/cafe/*.html demos/cafe/styles.css .deploy/demos/cafe/
-          cp demos/reform/*.html demos/reform/styles.css .deploy/demos/reform/
+          cp demos/demo-base.css .deploy/demos/
+          cp demos/salon/*.html demos/salon/styles.css demos/salon/favicon.svg .deploy/demos/salon/
+          cp demos/cafe/*.html demos/cafe/styles.css demos/cafe/favicon.svg .deploy/demos/cafe/
+          cp demos/reform/*.html demos/reform/styles.css demos/reform/favicon.svg .deploy/demos/reform/
           cp guide/index.html guide/styles.css guide/guide.js .deploy/guide/
           cp guide/context/index.html guide/context/context.css .deploy/guide/context/
           cp guide/setup/index.html guide/setup/setup.css .deploy/guide/setup/
@@ -73,9 +74,13 @@ jobs:
           test -f .deploy/flow/index.html
           test -f .deploy/faq/index.html
           test -f .deploy/demos/index.html
+          test -f .deploy/demos/demo-base.css
           test -f .deploy/demos/salon/index.html
+          test -f .deploy/demos/salon/favicon.svg
           test -f .deploy/demos/cafe/index.html
+          test -f .deploy/demos/cafe/favicon.svg
           test -f .deploy/demos/reform/index.html
+          test -f .deploy/demos/reform/favicon.svg
           test -f .deploy/guide/index.html
           test -f .deploy/guide/styles.css
           test -f .deploy/guide/guide.js

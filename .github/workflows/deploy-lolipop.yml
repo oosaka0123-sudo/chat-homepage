@@ -46,7 +46,7 @@ jobs:
           cp index.html favicon.svg robots.txt sitemap.xml .nojekyll .htaccess google10b52f5d3ce8d9fd.html .deploy/
           cp assets/css/styles.css .deploy/assets/css/
           cp assets/js/main.js assets/js/common-menu.js .deploy/assets/js/
-          cp assets/img/chat-homepage-logo.png .deploy/assets/img/
+          cp assets/img/chat-homepage-logo.png assets/img/rss7-house-hero.webp .deploy/assets/img/
           mkdir -p .deploy/service .deploy/price .deploy/flow .deploy/faq .deploy/demos/salon .deploy/demos/cafe .deploy/demos/reform .deploy/guide/context .deploy/guide/setup .deploy/guide/free-limits .deploy/guide/direct-edit
           cp service/index.html .deploy/service/
           cp price/index.html .deploy/price/
@@ -68,6 +68,7 @@ jobs:
           test -f .deploy/google10b52f5d3ce8d9fd.html
           test -f .deploy/release.txt
           test -f .deploy/assets/img/chat-homepage-logo.png
+          test -f .deploy/assets/img/rss7-house-hero.webp
           test -f .deploy/assets/js/common-menu.js
           test -f .deploy/service/index.html
           test -f .deploy/price/index.html
@@ -171,7 +172,11 @@ jobs:
           curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
             "$PRODUCTION_URL/guide/direct-edit/?v=$bust" > /tmp/direct-edit.html
           grep -q 'ホームページを直接編集したい方へ' /tmp/direct-edit.html
-          for asset in assets/img/chat-homepage-logo.png guide/styles.css guide/guide.js guide/context/context.css guide/setup/setup.css guide/free-limits/free-limits.css; do
+          curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
+            "$PRODUCTION_URL/demos/?v=$bust" > /tmp/demos.html
+          grep -q 'RSS7 HOUSE' /tmp/demos.html
+          grep -q 'oosaka0123-sudo.github.io/rss7-house/' /tmp/demos.html
+          for asset in assets/img/chat-homepage-logo.png assets/img/rss7-house-hero.webp guide/styles.css guide/guide.js guide/context/context.css guide/setup/setup.css guide/free-limits/free-limits.css; do
             curl --fail --silent --show-error --retry 3 -o /dev/null \
               "$PRODUCTION_URL/$asset?v=$bust"
           done

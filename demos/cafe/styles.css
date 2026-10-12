@@ -31,3 +31,20 @@ footer{padding:34px clamp(24px,5vw,70px)!important;background:#0d0a08!important;
 html.menu-open,body.menu-open{overflow:hidden!important;overscroll-behavior:none;touch-action:none}
 
 html.menu-open .site-header{background:rgba(20,14,10,.98)!important;backdrop-filter:none!important}
+
+/* Full Overlay / Web Design Master integration */
+.desktop-nav{display:none!important}
+.site-header .menu-toggle{display:grid!important;position:absolute!important;top:15px!important;right:clamp(16px,4vw,54px)!important;z-index:131!important;visibility:visible!important;opacity:1!important}
+.overlay-menu{isolation:isolate;overflow:hidden;background:#0b0806!important}
+.overlay-video{position:absolute;inset:-2%;width:104%;height:104%;object-fit:cover;object-position:58% center;z-index:0;opacity:.62;filter:saturate(.82) contrast(1.06);transform:scale(1.02)}
+.overlay-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(10,7,5,.94) 0%,rgba(10,7,5,.80) 42%,rgba(10,7,5,.58) 100%),linear-gradient(180deg,rgba(10,7,5,.28),rgba(10,7,5,.78))}
+.overlay-inner{position:relative;z-index:2}
+.overlay-links{counter-reset:cafe-nav}
+.overlay-links a{counter-increment:cafe-nav;position:relative;padding-left:clamp(42px,5vw,78px);text-shadow:0 2px 22px rgba(0,0,0,.45)}
+.overlay-links a::before{content:"0" counter(cafe-nav);position:absolute;left:0;top:50%;transform:translateY(-50%);font:700 10px/1 system-ui,sans-serif;letter-spacing:.18em;color:#e0a37b}
+.overlay-links a:focus-visible{outline:2px solid #f3ead8;outline-offset:5px}
+.overlay-menu[aria-hidden="false"] .overlay-video{animation:cafe-overlay-breathe 8s ease-in-out infinite alternate}
+@keyframes cafe-overlay-breathe{from{transform:scale(1.02)}to{transform:scale(1.075)}}
+@media(min-width:901px){.site-header .menu-toggle::before{content:"MENU";position:absolute;right:58px;top:50%;transform:translateY(-50%);font:800 10px/1 system-ui,sans-serif;letter-spacing:.18em;color:rgba(255,255,255,.82)}.overlay-inner{width:min(1180px,calc(100% - 96px));}.overlay-links a{font-size:clamp(4rem,8vw,8.5rem);min-height:clamp(82px,12vh,126px)}}
+@media(max-width:900px){.overlay-video{object-position:62% center;opacity:.54}.overlay-scrim{background:linear-gradient(90deg,rgba(10,7,5,.94),rgba(10,7,5,.70)),linear-gradient(180deg,rgba(10,7,5,.35),rgba(10,7,5,.80))}.overlay-links a{padding-left:38px}}
+@media(prefers-reduced-motion:reduce){.overlay-video{display:none!important}.overlay-menu[aria-hidden="false"] .overlay-video{animation:none!important}}

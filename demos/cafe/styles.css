@@ -32,3 +32,28 @@ footer{padding:34px clamp(24px,5vw,70px)!important;background:#0d0a08!important;
 html.menu-open,body.menu-open{overflow:hidden!important;overscroll-behavior:none;touch-action:none}
 
 html.menu-open .site-header{background:rgba(20,14,10,.98)!important;backdrop-filter:none!important}
+
+/* Web Design Master: Full Overlay Video */
+.demo-cafe .desktop-nav{display:none!important}
+.demo-cafe .site-header{display:flex!important;align-items:center;justify-content:space-between}
+.demo-cafe .menu-toggle{display:grid!important;position:static!important;margin-left:auto!important;z-index:1!important;visibility:visible!important;opacity:1!important}
+.demo-cafe .overlay-menu{z-index:220!important;background:#0c0907!important;overflow:auto;isolation:isolate}
+.demo-cafe .overlay-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:0;transform:scale(1.025);filter:saturate(.72) contrast(1.05) brightness(.78);transition:opacity .55s ease}
+.demo-cafe .overlay-menu.is-video-ready .overlay-video{opacity:.62}
+.demo-cafe .overlay-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(8,6,5,.9) 0%,rgba(10,7,5,.72) 47%,rgba(10,7,5,.82) 100%),linear-gradient(180deg,rgba(0,0,0,.16),rgba(0,0,0,.46))}
+.demo-cafe .overlay-inner{position:relative;z-index:2}
+.demo-cafe .overlay-close{position:absolute;z-index:3;top:clamp(18px,3vw,34px);right:clamp(18px,4vw,54px);width:54px;height:54px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.5);background:rgba(10,7,5,.18);color:#fff;cursor:pointer}
+.demo-cafe .overlay-close span{position:absolute;width:26px;height:1.5px;background:currentColor;transform:rotate(45deg)}
+.demo-cafe .overlay-close span:last-child{transform:rotate(-45deg)}
+.demo-cafe .overlay-close:focus-visible,.demo-cafe .menu-toggle:focus-visible,.demo-cafe .overlay-links a:focus-visible{outline:2px solid #fff;outline-offset:5px}
+.demo-cafe .overlay-links a{position:relative;text-shadow:0 2px 22px rgba(0,0,0,.38)}
+.demo-cafe .overlay-menu[aria-hidden="true"] .overlay-video{visibility:hidden}
+html.menu-open,body.menu-open{overflow:hidden!important;overscroll-behavior:none}
+@media(max-width:900px){
+  .demo-cafe .overlay-inner{padding-top:clamp(98px,18vh,150px)}
+  .demo-cafe .overlay-close{top:18px;right:16px;width:50px;height:50px}
+}
+@media(prefers-reduced-motion:reduce){
+  .demo-cafe .overlay-video{display:none!important}
+  .demo-cafe .overlay-menu{background:#15100c!important}
+}

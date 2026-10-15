@@ -55,7 +55,7 @@ jobs:
           cp demos/index.html .deploy/demos/
           cp demos/demo-base.css .deploy/demos/
           cp demos/salon/*.html demos/salon/styles.css demos/salon/favicon.svg .deploy/demos/salon/
-          cp demos/cafe/*.html demos/cafe/styles.css demos/cafe/favicon.svg .deploy/demos/cafe/
+          cp demos/cafe/*.html demos/cafe/styles.css demos/cafe/favicon.svg demos/cafe/cafe.js demos/cafe/cafe-overlay.part*.b64 .deploy/demos/cafe/
           cp demos/reform/*.html demos/reform/styles.css demos/reform/favicon.svg .deploy/demos/reform/
           cp guide/index.html guide/styles.css guide/guide.js .deploy/guide/
           cp guide/context/index.html guide/context/context.css .deploy/guide/context/
@@ -80,6 +80,8 @@ jobs:
           test -f .deploy/demos/salon/favicon.svg
           test -f .deploy/demos/cafe/index.html
           test -f .deploy/demos/cafe/favicon.svg
+          test -f .deploy/demos/cafe/cafe.js
+          test "$(find .deploy/demos/cafe -name 'cafe-overlay.part*.b64' | wc -l)" -eq 6
           test -f .deploy/demos/reform/index.html
           test -f .deploy/demos/reform/favicon.svg
           test -f .deploy/guide/index.html
@@ -176,7 +178,11 @@ jobs:
             "$PRODUCTION_URL/demos/?v=$bust" > /tmp/demos.html
           grep -q 'RSS7 HOUSE' /tmp/demos.html
           grep -q 'oosaka0123-sudo.github.io/rss7-house/' /tmp/demos.html
-          for asset in assets/img/chat-homepage-logo.png assets/img/rss7-house-hero.webp guide/styles.css guide/guide.js guide/context/context.css guide/setup/setup.css guide/free-limits/free-limits.css; do
+          curl --fail --silent --show-error --retry 3 -H 'Cache-Control: no-cache' \
+            "$PRODUCTION_URL/demos/cafe/?v=$bust" > /tmp/cafe.html
+          grep -q 'data-ks-overlay' /tmp/cafe.html
+          grep -q 'data-overlay-video' /tmp/cafe.html
+          for asset in assets/img/chat-homepage-logo.png assets/img/rss7-house-hero.webp guide/styles.css guide/guide.js guide/context/context.css guide/setup/setup.css guide/free-limits/free-limits.css demos/cafe/cafe.js demos/cafe/cafe-overlay.part0.b64 demos/cafe/cafe-overlay.part5.b64; do
             curl --fail --silent --show-error --retry 3 -o /dev/null \
               "$PRODUCTION_URL/$asset?v=$bust"
           done

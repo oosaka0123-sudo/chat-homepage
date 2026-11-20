@@ -29,6 +29,19 @@ jobs:
           set net:timeout 20
           set net:max-retries 2
           open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          pwd
+          cls -1 /
+          bye
+          LFTP
+          echo 'Listed FTP root directories only; no writes performed.'
+          exit 0
+          lftp <<LFTP
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ssl:verify-certificate true
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
           cd /saika/line-api
           get webhook.php -o .saika-readonly/webhook.php
           get lib/posts.php -o .saika-readonly/lib/posts.php

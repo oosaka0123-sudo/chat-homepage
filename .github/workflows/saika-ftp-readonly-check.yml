@@ -1,0 +1,46 @@
+name: Saika production FTP read-only check
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: saika-ftp-inspection
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install FTPS tool
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+      - name: Inspect only the Saika LINE files
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD" || { echo 'Chat-host FTPS credentials are unavailable'; exit 1; }
+          mkdir -p .saika-readonly/lib
+          lftp <<LFTP
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ssl:verify-certificate true
+          set net:timeout 20
+          set net:max-retries 2
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /saika/line-api
+          get webhook.php -o .saika-readonly/webhook.php
+          get lib/posts.php -o .saika-readonly/lib/posts.php
+          get lib/messages.php -o .saika-readonly/lib/messages.php
+          bye
+          LFTP
+          test -s .saika-readonly/webhook.php
+          test -s .saika-readonly/lib/posts.php
+          test -s .saika-readonly/lib/messages.php
+          echo 'Read-only access to exactly three Saika LINE files: success'
+          printf '%s  %s\n' \
+            '0c3d0b9c1f164560ff79dd1c7ffd7ef12a2d3207419912b437585e727d09d9ce' '.saika-readonly/webhook.php' \
+            '9e04ee2913f3ce82aec034a2b44b092a7383bd8c43d8bfbad809333d7aa153ae' '.saika-readonly/lib/posts.php' \
+            '2267761a2bd90f6407cf8bb0f8cfc5cf23b132267089b4ff005e5a55336eab74' '.saika-readonly/lib/messages.php' | sha256sum --check || { echo 'Server files differ from prior PC04 copies; review before deployment'; exit 1; }
+          echo 'Saika backend matches the three prior PC04 reference copies; no writes performed.'

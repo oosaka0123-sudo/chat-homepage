@@ -30,7 +30,7 @@ jobs:
           set net:max-retries 2
           open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
           pwd
-          cls -1 /saika
+          cls -1 /saika/public
           bye
           LFTP
           echo 'Listed FTP root directories only; no writes performed.'

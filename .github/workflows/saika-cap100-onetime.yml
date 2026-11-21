@@ -1,0 +1,134 @@
+name: Saika 50-member auto-publish cap hotfix
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Preflight or deploy one approved core.php update
+        type: choice
+        required: true
+        default: check
+        options:
+          - check
+          - deploy
+      confirmation:
+        description: For deploy type DEPLOY-SAIKA-100
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: saika-member-cap-release
+  cancel-in-progress: false
+jobs:
+  update:
+    if: github.actor == 'oosaka0123-sudo'
+    runs-on: ubuntu-latest
+    env:
+      FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+      FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+      MODE: ${{ inputs.mode }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - name: Fetch exact tested Saika version
+        uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/wakayama-saika-club
+          ref: a69d5b09a007b2cde66911eea787ceff185d6708
+          path: .src
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Confirm scope, test and install FTPS
+        run: |
+          set -euo pipefail
+          if [ "$MODE" = 'deploy' ]; then
+            test "$CONFIRMATION" = 'DEPLOY-SAIKA-100' || { echo 'Missing confirmation'; exit 1; }
+          fi
+          test "$MODE" = 'check' || test "$MODE" = 'deploy'
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD" || { echo 'Missing credentials'; exit 1; }
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lftp php-cli php-mbstring
+          php -l .src/line-api/lib/core.php
+          php .src/tests/test_site_publish_cap.php
+      - name: Download and verify current production PHP
+        id: backup
+        run: |
+          set -euo pipefail
+          mkdir -p .before
+          lftp <<LFTP
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ssl:verify-certificate true
+          set net:timeout 20
+          set net:max-retries 2
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /saika/public/line-api
+          get lib/core.php -o .before/core.php
+          bye
+          LFTP
+          git -C .src show a61082fb6c948da41d5116aea219f0de3a462096:line-api/lib/core.php > .before/expected.php
+          cmp .before/core.php .before/expected.php || {
+            echo 'Production file has changed since last verified deployment. Refusing update.'
+            exit 1
+          }
+          echo 'Safe preflight: exact core.php version verified, backup ready.'
+      - name: Change only Saika line-api/lib/core.php
+        id: publish
+        if: inputs.mode == 'deploy'
+        run: |
+          set -euo pipefail
+          lftp <<LFTP
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ssl:verify-certificate true
+          set net:timeout 20
+          set net:max-retries 2
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /saika/public/line-api
+          put .src/line-api/lib/core.php -o lib/core.php
+          bye
+          LFTP
+      - name: Verify exact bytes and public endpoint
+        id: verify
+        if: inputs.mode == 'deploy'
+        run: |
+          set -euo pipefail
+          mkdir -p .after
+          lftp <<LFTP
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ssl:verify-certificate true
+          set net:timeout 20
+          set net:max-retries 2
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /saika/public/line-api
+          get lib/core.php -o .after/core.php
+          bye
+          LFTP
+          cmp .src/line-api/lib/core.php .after/core.php
+          curl --fail --silent --show-error --max-time 20 --output /dev/null 'https://saika.rss7.net/line-api/feed.php'
+          echo 'SUCCESS: core.php verified, other server files and private data untouched.'
+      - name: Restore prior core.php on failure
+        if: failure() && steps.backup.outcome == 'success' && inputs.mode == 'deploy' && (steps.publish.outcome == 'failure' || steps.verify.outcome == 'failure')
+        run: |
+          set -euo pipefail
+          test -s .before/core.php
+          lftp <<LFTP
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ssl:verify-certificate true
+          set net:timeout 20
+          set net:max-retries 2
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /saika/public/line-api
+          put .before/core.php -o lib/core.php
+          bye
+          LFTP
+          echo 'Restored previous verified file.'

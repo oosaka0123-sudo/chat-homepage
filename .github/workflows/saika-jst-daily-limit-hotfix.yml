@@ -1,0 +1,135 @@
+name: Saika LINE JST daily limit hotfix
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Verify current PHP, or deploy verified daily reset patch
+        type: choice
+        required: true
+        default: check
+        options:
+          - check
+          - deploy
+      confirmation:
+        description: For deploy, enter DEPLOY-SAIKA-JST-DAY
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: saika-line-jst-daily-limit-release
+  cancel-in-progress: false
+jobs:
+  verify-and-deploy:
+    if: github.actor == 'oosaka0123-sudo'
+    runs-on: ubuntu-latest
+    env:
+      FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+      FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+      MODE: ${{ inputs.mode }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - name: Checkout pinned Saika patch
+        uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/wakayama-saika-club
+          ref: 743183df5cf62a9d45ee765f1d5501ebb42fd8b5
+          fetch-depth: 0
+          path: .saika-src
+          persist-credentials: false
+      - name: Verify patch and install trusted FTP client
+        run: |
+          set -euo pipefail
+          if [ "$MODE" = 'deploy' ]; then
+            test "$CONFIRMATION" = 'DEPLOY-SAIKA-JST-DAY' || { echo 'No deploy authorization'; exit 1; }
+          fi
+          test "$MODE" = 'check' || test "$MODE" = 'deploy'
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD" || { echo 'No FTP credentials'; exit 1; }
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lftp php-cli php-mbstring
+          php -l .saika-src/line-api/lib/posts.php
+          php .saika-src/tests/test_daily_limit.php
+      - name: Read and compare current production PHP
+        id: backup
+        run: |
+          set -euo pipefail
+          mkdir -p .backup
+          lftp <<LFTP
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ssl:verify-certificate true
+          set net:timeout 20
+          set net:max-retries 2
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /saika/public/line-api
+          get lib/posts.php -o .backup/posts.php
+          bye
+          LFTP
+          test -s .backup/posts.php
+          git -C .saika-src show a61082fb6c948da41d5116aea219f0de3a462096:line-api/lib/posts.php > .backup/expected-before.php
+          cmp .backup/posts.php .backup/expected-before.php || {
+            echo 'Live posts.php differs from previously deployed version. No changes made.'
+            exit 1
+          }
+          echo 'Backed up and checked the exact target only. No private data accessed.'
+      - name: Deploy only line-api/lib/posts.php
+        if: inputs.mode == 'deploy'
+        id: publish
+        run: |
+          set -euo pipefail
+          lftp <<LFTP
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ssl:verify-certificate true
+          set net:timeout 20
+          set net:max-retries 2
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /saika/public/line-api
+          put .saika-src/line-api/lib/posts.php -o lib/posts.php
+          bye
+          LFTP
+      - name: Verify deployed PHP matches approved source
+        if: inputs.mode == 'deploy'
+        id: verify
+        run: |
+          set -euo pipefail
+          mkdir -p .after
+          lftp <<LFTP
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ssl:verify-certificate true
+          set net:timeout 20
+          set net:max-retries 2
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /saika/public/line-api
+          get lib/posts.php -o .after/posts.php
+          bye
+          LFTP
+          cmp .saika-src/line-api/lib/posts.php .after/posts.php
+          curl --fail --silent --show-error --max-time 20 --output /dev/null https://saika.rss7.net/line-api/feed.php
+          echo 'Updated posts.php verified byte-for-byte; feed responds successfully.'
+      - name: Restore prior posts.php if deployment fails
+        if: failure() && steps.backup.outcome == 'success' && inputs.mode == 'deploy' && (steps.publish.outcome == 'failure' || steps.verify.outcome == 'failure')
+        run: |
+          set -euo pipefail
+          test -s .backup/posts.php
+          lftp <<LFTP
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ssl:verify-certificate true
+          set net:timeout 20
+          set net:max-retries 2
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /saika/public/line-api
+          put .backup/posts.php -o lib/posts.php
+          bye
+          LFTP
+          echo 'Reverted posts.php. Photos, member data and posts were untouched.'

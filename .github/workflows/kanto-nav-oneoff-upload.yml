@@ -1,0 +1,167 @@
+name: One-off Kanto nine-spot navigation to Lolipop
+on:
+  push:
+    branches: [ops/kanto-nav-oneoff-upload-20261123]
+permissions:
+  contents: read
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: https://kanto.rss7.net
+      KANTO_SOURCE_SHA: 007c2ffa9eab6171758d5ce7476686093cb8a5d5
+    steps:
+      - name: Checkout exact Kanto source commit
+        uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/kanto-surfer-ks
+          ref: 007c2ffa9eab6171758d5ce7476686093cb8a5d5
+          path: kanto-src
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Rebuild using existing public data, without API recalculation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l kanto-src/scripts/build_pages_site.php
+          node --check kanto-src/prototype/spot-forecast/app.js
+          mkdir -p "$RUNNER_TEMP/kanto-data" "$RUNNER_TEMP/kanto-deploy"
+          for id in kugenuma yuigahama oarai_onuki kashima_hirai katakai ichinomiya taito onjuku kamogawa_maruki; do
+            curl -4 -fsSL --retry 3 "$TARGET/data/$id.json" -o "$RUNNER_TEMP/kanto-data/$id.json"
+            jq -e '.daily.days == 10 and (.daily.rows | length) == 10' "$RUNNER_TEMP/kanto-data/$id.json" >/dev/null
+          done
+          php kanto-src/scripts/build_pages_site.php --public-dir="$RUNNER_TEMP/kanto-data" --output-dir="$RUNNER_TEMP/kanto-built"
+          cp "$RUNNER_TEMP/kanto-built/index.html" "$RUNNER_TEMP/kanto-deploy/"
+          cp "$RUNNER_TEMP/kanto-built/app.js" "$RUNNER_TEMP/kanto-deploy/"
+          cp "$RUNNER_TEMP/kanto-built/styles.css" "$RUNNER_TEMP/kanto-deploy/"
+          for dir in spots about contact privacy; do
+            cp -R "$RUNNER_TEMP/kanto-built/$dir" "$RUNNER_TEMP/kanto-deploy/"
+          done
+          test "$(find "$RUNNER_TEMP/kanto-deploy" -type f | wc -l)" -eq 15
+          echo "Upload contains only 13 HTML pages and app.js/styles.css"
+
+      - name: Verify nine spot links in menu and footer on every page
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_DIR="$RUNNER_TEMP/kanto-deploy" node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {join} from 'node:path';
+          const slugs=['kugenuma','yuigahama','oarai-onuki','kashima-hirai','katakai','ichinomiya','taito','onjuku','kamogawa-maruki'];
+          const pages=['index.html',...slugs.map(s=>'spots/'+s+'/index.html'),'about/index.html','contact/index.html','privacy/index.html'];
+          for(const page of pages){
+            const html=readFileSync(join(process.env.DEPLOY_DIR,page),'utf8');
+            const menu=html.split('class="menu-spot-group"')[1]?.split('</div>')[0];
+            const footer=html.split('class="footer-spot-grid"')[1]?.split('</div>')[0];
+            if(!menu||!footer)throw new Error('Missing navigation '+page);
+            const prefix=page==='index.html'?'':page.startsWith('spots/')?'../../':'../';
+            for(const chunk of [menu,footer]){
+              if((chunk.match(/<a /g)||[]).length!==9)throw new Error('Expected nine links in '+page);
+              for(const slug of slugs){
+                if(!chunk.includes('href="'+prefix+'spots/'+slug+'/"'))throw new Error('Wrong spot link '+page+' '+slug);
+              }
+            }
+          }
+          console.log('PASS: 13 pages, nine menu links and nine footer links each');
+          NODE
+
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+
+      - name: Backup existing Lolipop /kanto production
+        id: backup
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          mkdir -p "$RUNNER_TEMP/kanto-rollback"
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ftp:list-options -a
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          mirror --verbose=1 /kanto/ "$RUNNER_TEMP/kanto-rollback/"
+          bye
+          LFTP_EOF
+          test -f "$RUNNER_TEMP/kanto-rollback/index.html"
+          echo "Backup completed before upload"
+
+      - name: Upload only navigation HTML and assets, without remote deletion
+        id: upload
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ftp:list-options -a
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto
+          lcd "$RUNNER_TEMP/kanto-deploy"
+          mirror --reverse --verbose=1 --no-perms ./ ./
+          bye
+          LFTP_EOF
+
+      - name: Verify 15 files byte-for-byte on Lolipop and 13 public routes
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          bust="$GITHUB_RUN_ID"
+          stage="$RUNNER_TEMP/kanto-deploy"
+          while IFS= read -r -d '' f; do
+            rel="${f#"$stage"/}"
+            curl -4 -fsSL --retry 3 -H 'Cache-Control: no-cache' "$TARGET/$rel?v=$bust" -o "$RUNNER_TEMP/kanto-live-file"
+            cmp -s "$f" "$RUNNER_TEMP/kanto-live-file" || { echo "::error::Mismatch $rel"; exit 1; }
+          done < <(find "$stage" -type f -print0)
+          for page in '' spots/kugenuma/ spots/yuigahama/ spots/oarai-onuki/ spots/kashima-hirai/ spots/katakai/ spots/ichinomiya/ spots/taito/ spots/onjuku/ spots/kamogawa-maruki/ about/ contact/ privacy/; do
+            curl -4 -fsSL --retry 3 "$TARGET/$page?v=$bust" -o "$RUNNER_TEMP/kanto-live-dir"
+            grep -q 'menu-spot-group' "$RUNNER_TEMP/kanto-live-dir"
+            grep -q 'footer-spot-grid' "$RUNNER_TEMP/kanto-live-dir"
+          done
+          echo "PASS: all 15 files match; 13 public routes have both navigation blocks"
+
+      - name: Restore previous site if upload or verification fails
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ftp:list-options -a
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto
+          lcd "$RUNNER_TEMP/kanto-rollback"
+          mirror --reverse --verbose=1 --no-perms ./ ./
+          bye
+          LFTP_EOF
+          echo "::warning::Restored backup after failure"

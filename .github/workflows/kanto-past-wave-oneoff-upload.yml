@@ -1,0 +1,196 @@
+name: One-off Kanto past wave values to Lolipop
+on:
+  push:
+    branches: [ops/kanto-past-wave-oneoff-20261123]
+permissions:
+  contents: read
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: https://kanto.rss7.net
+      KANTO_SOURCE_SHA: a70c51b03a2a5c009e38f6fadec50051d16b7600
+    steps:
+      - name: Checkout exact Kanto source commit
+        uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/kanto-surfer-ks
+          ref: a70c51b03a2a5c009e38f6fadec50051d16b7600
+          path: kanto-src
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Build today's Kugenuma model hours from Open-Meteo
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l kanto-src/scripts/fetch_open_meteo.php
+          php -l kanto-src/scripts/normalize_open_meteo.php
+          php -l kanto-src/scripts/build_public_forecast.php
+          php -l kanto-src/scripts/build_pages_site.php
+          node --check kanto-src/prototype/spot-forecast/app.js
+          mkdir -p "$RUNNER_TEMP/kanto-data" "$RUNNER_TEMP/kanto-deploy/data"
+          mkdir -p "$RUNNER_TEMP/kanto-raw" "$RUNNER_TEMP/kanto-normalized" "$RUNNER_TEMP/kanto-generated"
+          # Leave every other surf spot's live data untouched.
+          for id in yuigahama oarai_onuki kashima_hirai katakai ichinomiya taito onjuku kamogawa_maruki; do
+            curl -4 -fsSL --retry 3 "$TARGET/data/$id.json" -o "$RUNNER_TEMP/kanto-data/$id.json"
+            jq -e '.daily.days == 10 and (.daily.rows | length) == 10' "$RUNNER_TEMP/kanto-data/$id.json" >/dev/null
+          done
+          # The source API contains today from 00:00 even after the hour has elapsed.
+          jq '.spots |= map(select(.id == "kugenuma"))' \
+            kanto-src/config/representative-spots.json > "$RUNNER_TEMP/kanto-one-spot.json"
+          test "$(jq '.spots | length' "$RUNNER_TEMP/kanto-one-spot.json")" -eq 1
+          php kanto-src/scripts/fetch_open_meteo.php \
+            --config="$RUNNER_TEMP/kanto-one-spot.json" --output-dir="$RUNNER_TEMP/kanto-raw"
+          php kanto-src/scripts/normalize_open_meteo.php \
+            --input="$RUNNER_TEMP/kanto-raw/latest.json" --output-dir="$RUNNER_TEMP/kanto-normalized"
+          php kanto-src/scripts/build_public_forecast.php \
+            --input="$RUNNER_TEMP/kanto-normalized/latest.json" \
+            --output-dir="$RUNNER_TEMP/kanto-generated"
+          cp "$RUNNER_TEMP/kanto-generated/kugenuma.json" "$RUNNER_TEMP/kanto-data/kugenuma.json"
+          jq -e '.daily.days == 10 and (.daily.rows | length) == 10 and .tide.station_id == "D8"' "$RUNNER_TEMP/kanto-data/kugenuma.json" >/dev/null
+          node kanto-src/tests/kugenuma_hourly_smoke.cjs "$RUNNER_TEMP/kanto-data"
+          php kanto-src/scripts/build_pages_site.php \
+            --public-dir="$RUNNER_TEMP/kanto-data" --output-dir="$RUNNER_TEMP/kanto-built"
+          cp "$RUNNER_TEMP/kanto-built/index.html" "$RUNNER_TEMP/kanto-deploy/"
+          cp "$RUNNER_TEMP/kanto-built/app.js" "$RUNNER_TEMP/kanto-deploy/"
+          cp "$RUNNER_TEMP/kanto-built/styles.css" "$RUNNER_TEMP/kanto-deploy/"
+          for dir in spots about contact privacy; do
+            cp -R "$RUNNER_TEMP/kanto-built/$dir" "$RUNNER_TEMP/kanto-deploy/"
+          done
+          cp "$RUNNER_TEMP/kanto-generated/kugenuma.json" "$RUNNER_TEMP/kanto-deploy/data/kugenuma.json"
+          test "$(find "$RUNNER_TEMP/kanto-deploy" -type f | wc -l)" -eq 16
+          echo "Upload contains 13 HTML, app.js, styles.css, and Kugenuma JSON only"
+
+      - name: Verify 13 footer-only pages and Kugenuma tide marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_DIR="$RUNNER_TEMP/kanto-deploy" node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          import {join} from 'node:path';
+          const slugs=['kugenuma','yuigahama','oarai-onuki','kashima-hirai','katakai','ichinomiya','taito','onjuku','kamogawa-maruki'];
+          const pages=['index.html',...slugs.map(s=>'spots/'+s+'/index.html'),'about/index.html','contact/index.html','privacy/index.html'];
+          for(const page of pages){
+            const html=readFileSync(join(process.env.DEPLOY_DIR,page),'utf8');
+            const footer=html.split('class="footer-spot-grid"')[1]?.split('</div>')[0];
+            if(!footer)throw new Error('Missing footer '+page);
+            if(html.includes('class="menu-button"')||html.includes('class="menu-spot-group"'))throw new Error('Unexpected menu '+page);
+            if(page==='spots/kugenuma/index.html'&&!html.includes('data-tide-phase'))throw new Error('Missing tide phase');
+            if(page!=='spots/kugenuma/index.html'&&html.includes('data-tide-phase'))throw new Error('Unexpected tide phase');
+            const prefix=page==='index.html'?'':page.startsWith('spots/')?'../../':'../';
+            for(const chunk of [footer]){
+              if((chunk.match(/<a /g)||[]).length!==9)throw new Error('Expected nine links in '+page);
+              for(const slug of slugs){
+                if(!chunk.includes('href="'+prefix+'spots/'+slug+'/"'))throw new Error('Wrong spot link '+page+' '+slug);
+              }
+            }
+          }
+          console.log('PASS: 13 footer-only pages, nine spot links, Kugenuma tide UI');
+          NODE
+
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+
+      - name: Backup existing Lolipop /kanto production
+        id: backup
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          mkdir -p "$RUNNER_TEMP/kanto-rollback"
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ftp:list-options -a
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          mirror --verbose=1 /kanto/ "$RUNNER_TEMP/kanto-rollback/"
+          bye
+          LFTP_EOF
+          test -f "$RUNNER_TEMP/kanto-rollback/index.html"
+          echo "Backup completed before upload"
+
+      - name: Upload past wave HTML, app.js, and Kugenuma JSON without deletion
+        id: upload
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ftp:list-options -a
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto
+          lcd "$RUNNER_TEMP/kanto-deploy"
+          mirror --reverse --verbose=1 --no-perms ./ ./
+          bye
+          LFTP_EOF
+
+      - name: Verify 16 files byte-for-byte on Lolipop and 13 public routes
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          bust="$GITHUB_RUN_ID"
+          stage="$RUNNER_TEMP/kanto-deploy"
+          while IFS= read -r -d '' f; do
+            rel="${f#"$stage"/}"
+            curl -4 -fsSL --retry 3 -H 'Cache-Control: no-cache' "$TARGET/$rel?v=$bust" -o "$RUNNER_TEMP/kanto-live-file"
+            cmp -s "$f" "$RUNNER_TEMP/kanto-live-file" || { echo "::error::Mismatch $rel"; exit 1; }
+          done < <(find "$stage" -type f -print0)
+          for page in '' spots/kugenuma/ spots/yuigahama/ spots/oarai-onuki/ spots/kashima-hirai/ spots/katakai/ spots/ichinomiya/ spots/taito/ spots/onjuku/ spots/kamogawa-maruki/ about/ contact/ privacy/; do
+            curl -4 -fsSL --retry 3 "$TARGET/$page?v=$bust" -o "$RUNNER_TEMP/kanto-live-dir"
+            ! grep -q 'menu-spot-group' "$RUNNER_TEMP/kanto-live-dir"
+            grep -q 'footer-spot-grid' "$RUNNER_TEMP/kanto-live-dir"
+          done
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/?v=$bust" -o "$RUNNER_TEMP/kanto-live-kugenuma"
+          grep -q 'data-tide-phase' "$RUNNER_TEMP/kanto-live-kugenuma"
+          curl -4 -fsSL --retry 3 "$TARGET/app.js?v=$bust" -o "$RUNNER_TEMP/kanto-live-app"
+          grep -q 'tide-now-dot' "$RUNNER_TEMP/kanto-live-app"
+          curl -4 -fsSL --retry 3 "$TARGET/data/kugenuma.json?v=$bust" -o "$RUNNER_TEMP/kanto-live-json"
+          node kanto-src/tests/kugenuma_hourly_smoke.cjs "$RUNNER_TEMP/kanto-data"
+          echo "PASS: 16 files byte-for-byte match, 13 routes valid, Kugenuma past wave and tide UI live"
+
+      - name: Restore previous site if upload or verification fails
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set ftp:list-options -a
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto
+          lcd "$RUNNER_TEMP/kanto-rollback"
+          mirror --reverse --verbose=1 --no-perms ./ ./
+          bye
+          LFTP_EOF
+          echo "::warning::Restored backup after failure"

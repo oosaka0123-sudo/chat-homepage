@@ -9,13 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TARGET: https://kanto.rss7.net
-      KANTO_SOURCE_SHA: 007c2ffa9eab6171758d5ce7476686093cb8a5d5
+      KANTO_SOURCE_SHA: 211f6248cf6efccdc91451af6b287eea09cb3577
     steps:
       - name: Checkout exact Kanto source commit
         uses: actions/checkout@v4
         with:
           repository: oosaka0123-sudo/kanto-surfer-ks
-          ref: 007c2ffa9eab6171758d5ce7476686093cb8a5d5
+          ref: 211f6248cf6efccdc91451af6b287eea09cb3577
           path: kanto-src
           persist-credentials: false
 
@@ -46,7 +46,7 @@ jobs:
           test "$(find "$RUNNER_TEMP/kanto-deploy" -type f | wc -l)" -eq 15
           echo "Upload contains only 13 HTML pages and app.js/styles.css"
 
-      - name: Verify nine spot links in menu and footer on every page
+      - name: Verify all 13 pages have no top menus and footer links remain
         shell: bash
         run: |
           set -euo pipefail
@@ -57,18 +57,19 @@ jobs:
           const pages=['index.html',...slugs.map(s=>'spots/'+s+'/index.html'),'about/index.html','contact/index.html','privacy/index.html'];
           for(const page of pages){
             const html=readFileSync(join(process.env.DEPLOY_DIR,page),'utf8');
-            const menu=html.split('class="menu-spot-group"')[1]?.split('</div>')[0];
-            const footer=html.split('class="footer-spot-grid"')[1]?.split('</div>')[0];
-            if(!menu||!footer)throw new Error('Missing navigation '+page);
-            const prefix=page==='index.html'?'':page.startsWith('spots/')?'../../':'../';
-            for(const chunk of [menu,footer]){
-              if((chunk.match(/<a /g)||[]).length!==9)throw new Error('Expected nine links in '+page);
-              for(const slug of slugs){
-                if(!chunk.includes('href="'+prefix+'spots/'+slug+'/"'))throw new Error('Wrong spot link '+page+' '+slug);
-              }
+            for(const bad of ['class="menu-button"','id="site-menu"','class="spot-picker"','class="permanent-pages"']){
+              if(html.includes(bad))throw new Error('Unexpected upper navigation '+page+' '+bad);
             }
+            const footer=html.split('class="footer-spot-grid"')[1]?.split('</div>')[0];
+            if(!footer)throw new Error('Missing footer navigation '+page);
+            const prefix=page==='index.html'?'':page.startsWith('spots/')?'../../':'../';
+            if((footer.match(/<a /g)||[]).length!==9)throw new Error('Expected nine footer links in '+page);
+            for(const slug of slugs){
+              if(!footer.includes('href="'+prefix+'spots/'+slug+'/"'))throw new Error('Wrong footer link '+page+' '+slug);
+            }
+            if(!html.includes('index,follow')||!html.includes('rel="canonical"'))throw new Error('SEO marker missing '+page);
           }
-          console.log('PASS: 13 pages, nine menu links and nine footer links each');
+          console.log('PASS: 13 pages; no hamburger/top spot links, nine footer links retained, SEO intact');
           NODE
 
       - name: Install lftp
@@ -137,10 +138,13 @@ jobs:
           done < <(find "$stage" -type f -print0)
           for page in '' spots/kugenuma/ spots/yuigahama/ spots/oarai-onuki/ spots/kashima-hirai/ spots/katakai/ spots/ichinomiya/ spots/taito/ spots/onjuku/ spots/kamogawa-maruki/ about/ contact/ privacy/; do
             curl -4 -fsSL --retry 3 "$TARGET/$page?v=$bust" -o "$RUNNER_TEMP/kanto-live-dir"
-            grep -q 'menu-spot-group' "$RUNNER_TEMP/kanto-live-dir"
+            ! grep -q 'menu-button' "$RUNNER_TEMP/kanto-live-dir"
+            ! grep -q 'id="site-menu"' "$RUNNER_TEMP/kanto-live-dir"
+            ! grep -q 'class="spot-picker"' "$RUNNER_TEMP/kanto-live-dir"
+            ! grep -q 'class="permanent-pages"' "$RUNNER_TEMP/kanto-live-dir"
             grep -q 'footer-spot-grid' "$RUNNER_TEMP/kanto-live-dir"
           done
-          echo "PASS: all 15 files match; 13 public routes have both navigation blocks"
+          echo "PASS: 15 files match; 13 routes have no top nav, and retain footer spot links"
 
       - name: Restore previous site if upload or verification fails
         if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')

@@ -1,0 +1,125 @@
+name: One-off Kugenuma six-section pilot to Lolipop
+on:
+  push:
+    branches: [ops/kugenuma-six-section-20261124]
+    paths: ['.github/workflows/kugenuma-six-section-oneoff.yml']
+permissions:
+  contents: read
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: https://kanto.rss7.net
+      ASSET: app-pilot-371c9c05.js
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/kanto-surfer-ks
+          ref: 371c9c05c52d7ee4e7a54081aa1604bd72cbba39
+          path: kanto-src
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Build and stage only Kugenuma
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l kanto-src/scripts/build_pages_site.php
+          node --check kanto-src/prototype/spot-forecast/app.js
+          mkdir -p "$RUNNER_TEMP/kanto-data" "$RUNNER_TEMP/stage"
+          for id in kugenuma yuigahama oarai_onuki kashima_hirai katakai ichinomiya taito onjuku kamogawa_maruki; do
+            curl -4 -fsSL --retry 3 "$TARGET/data/$id.json" -o "$RUNNER_TEMP/kanto-data/$id.json"
+          done
+          php kanto-src/scripts/build_pages_site.php --public-dir="$RUNNER_TEMP/kanto-data" --output-dir="$RUNNER_TEMP/built"
+          cp "$RUNNER_TEMP/built/spots/kugenuma/index.html" "$RUNNER_TEMP/stage/index.html"
+          cp "$RUNNER_TEMP/built/app.js" "$RUNNER_TEMP/stage/$ASSET"
+          python3 - <<'PY'
+          import os, re, pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'stage'/'index.html'
+          s=p.read_text()
+          s,n=re.subn(r'src="../../app\.js\?v=[a-f0-9]+"', 'src="'+os.environ['ASSET']+'"',s)
+          assert n==1
+          assert re.findall(r'<span class="section-number">(\d+)</span>',s)==['01','02','03','04','05','06']
+          assert 'data-kugenuma-advice' in s and 'data-tide-phase' in s and 'menu-button' in s
+          p.write_text(s)
+          PY
+          test "$(find "$RUNNER_TEMP/stage" -type f | wc -l)" -eq 2
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Backup only the existing Kugenuma page
+        id: backup
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          get index.html -o "$RUNNER_TEMP/old-index.html"
+          bye
+          EOF
+          test -s "$RUNNER_TEMP/old-index.html"
+          grep -q 'data-forecast' "$RUNNER_TEMP/old-index.html"
+      - name: Upload dedicated JS then Kugenuma HTML
+        id: upload
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          put "$RUNNER_TEMP/stage/$ASSET" -o "$ASSET"
+          put "$RUNNER_TEMP/stage/index.html" -o index.html
+          bye
+          EOF
+      - name: Verify public files byte for byte
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in index.html "$ASSET"; do
+            curl -4 -fsSL --retry 3 -H 'Cache-Control: no-cache' "$TARGET/spots/kugenuma/$f?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-$f"
+            cmp "$RUNNER_TEMP/stage/$f" "$RUNNER_TEMP/live-$f"
+          done
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-dir.html"
+          cmp "$RUNNER_TEMP/stage/index.html" "$RUNNER_TEMP/live-dir.html"
+          echo 'PASS: Kugenuma HTML and dedicated JS match, no other location uploaded.'
+      - name: Restore previous page if release fails
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          put "$RUNNER_TEMP/old-index.html" -o index.html
+          bye
+          EOF

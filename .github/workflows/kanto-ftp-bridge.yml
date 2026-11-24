@@ -1,0 +1,36 @@
+name: Kanto FTPS safe preflight
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/kanto-ftp-bridge.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-kanto-ftps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+      FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+    steps:
+      - name: Verify existing FTPS credential and document root without writing
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          curl --fail --silent --show-error --ssl-reqd --ftp-pasv \
+            --user "$FTP_USER:$FTP_PASSWORD" --max-time 90 \
+            'ftp://ftp.lolipop.jp/kanto/spots/kugenuma/index.html' \
+            -o /tmp/kanto-ftp-page.html
+          curl --fail --silent --show-error --max-time 30 \
+            -H 'Cache-Control: no-cache' \
+            'https://kanto.rss7.net/spots/kugenuma/' -o /tmp/kanto-http-page.html
+          test -s /tmp/kanto-ftp-page.html
+          if ! cmp -s /tmp/kanto-ftp-page.html /tmp/kanto-http-page.html; then
+            echo 'FTP /kanto does not match the live subdomain. Refusing deployment.'
+            exit 1
+          fi
+          echo 'FTPS access and /kanto -> kanto.rss7.net document-root identity verified'

@@ -1,0 +1,147 @@
+name: Kanto BEST9 researched articles to Lolipop
+
+on:
+  schedule:
+    - cron: '15 23 * * *'
+    - cron: '15 0-2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kanto-best9-lolipop-production
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Kanto source of truth
+        uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/kanto-surfer-ks
+          ref: main
+          path: kanto-src
+          persist-credentials: false
+
+      - name: Install existing FTPS client
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+
+      - name: Verify research, back up pages, safely publish or expire
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          python3 - <<'PY'
+          import datetime, json, os, pathlib, re, subprocess, sys, tempfile
+          from zoneinfo import ZoneInfo
+
+          now=datetime.datetime.now(ZoneInfo('Asia/Tokyo'))
+          today=now.date().isoformat()
+          base=pathlib.Path('kanto-src')
+          config=json.loads((base/'config/representative-spots.json').read_text(encoding='utf-8'))
+          spots=config['spots']
+          assert len(spots)==9
+          slugs=[s['slug'] for s in spots]
+          assert all(re.fullmatch(r'[a-z0-9-]+', slug) for slug in slugs)
+          files=['index.html']+['spots/'+slug+'/index.html' for slug in slugs]
+          report_path=base/'content/research/latest.json'
+          report=json.loads(report_path.read_text(encoding='utf-8')) if report_path.exists() else None
+          mode='publish' if report and report.get('schema_version')==1 and report.get('status')=='published' and report.get('date')==today else 'expire'
+          print('JST date:',today,'research mode:',mode)
+
+          root=pathlib.Path(tempfile.mkdtemp(prefix='kanto-best9-'))
+          public=root/'public'
+          backup=root/'backup'
+          stage=root/'stage'
+          for d in (public,backup,stage):
+              for rel in files: (d/rel).parent.mkdir(parents=True,exist_ok=True)
+
+          def fetch_public(rel, salt):
+              url='https://kanto.rss7.net/'+rel.removesuffix('index.html')+'?best9_check='+salt+'-'+os.environ.get('GITHUB_RUN_ID','0')
+              out=root/('http-'+str(files.index(rel))+'.html')
+              proc=subprocess.run(['curl','-4','-fsSL','--retry','3','--max-time','30','-H','Cache-Control: no-cache',url,'-o',str(out)],capture_output=True,text=True)
+              if proc.returncode: raise RuntimeError('Public page fetch failed for '+rel)
+              content=out.read_bytes()
+              if b'data-forecast' not in content or b'</main>' not in content: raise RuntimeError('Unexpected live page: '+rel)
+              return content
+
+          for rel in files: (public/rel).write_bytes(fetch_public(rel,'preflight'))
+          if mode=='expire' and not any(b'KS-RESEARCH:' in (public/rel).read_bytes() for rel in files):
+              print('PASS / NO CHANGE: no current validated research and no old BEST9 markers')
+              sys.exit(0)
+
+          if not os.environ.get('FTP_USER') or not os.environ.get('FTP_PASSWORD'):
+              raise RuntimeError('Existing Lolipop FTPS secrets not configured')
+
+          def ftp_run(commands):
+              command=['set cmd:fail-exit true','set ftp:ssl-force true','set ftp:ssl-protect-data true','set ftp:passive-mode true','set net:timeout 20','set net:max-retries 3',
+                       'open -u "'+os.environ['FTP_USER']+'","'+os.environ['FTP_PASSWORD']+'" ftp.lolipop.jp'] + commands + ['bye']
+              proc=subprocess.run(['lftp'],input='\n'.join(command)+'\n',capture_output=True,text=True,timeout=300)
+              if proc.returncode: raise RuntimeError('FTPS transfer failed (exit '+str(proc.returncode)+')')
+
+          ftp_run(['get "/kanto/'+rel+'" -o "'+str(backup/rel)+'"' for rel in files])
+          for rel in files:
+              if (backup/rel).read_bytes()!=(public/rel).read_bytes():
+                  raise RuntimeError('Production drift, refusing to overwrite: '+rel)
+
+          for rel in files: (stage/rel).write_bytes((backup/rel).read_bytes())
+          if mode=='publish':
+              proc=subprocess.run(['node',str(base/'scripts/render_daily_research.cjs'),
+                        '--root',str(stage),'--data',str(report_path),
+                        '--config',str(base/'config/representative-spots.json'),'--date',today],capture_output=True,text=True)
+              if proc.returncode: raise RuntimeError('Report schema/time/source validation rejected publication: '+proc.stderr[-900:])
+              print(proc.stdout.strip())
+          else:
+              marker=re.compile(rb'<!-- KS-RESEARCH:[a-z0-9_]+:START -->.*?<!-- KS-RESEARCH:[a-z0-9_]+:END -->',re.S)
+              for rel in files:
+                  original=(stage/rel).read_bytes()
+                  starts=re.findall(rb'<!-- KS-RESEARCH:[a-z0-9_]+:START -->',original)
+                  ends=re.findall(rb'<!-- KS-RESEARCH:[a-z0-9_]+:END -->',original)
+                  if len(starts)!=len(ends) or len(starts)>1: raise RuntimeError('Broken existing research markers: '+rel)
+                  updated=marker.sub(b'',original)
+                  if starts and updated==original: raise RuntimeError('Unable to expire markers: '+rel)
+                  (stage/rel).write_bytes(updated)
+              print('Expired previous-day research markup without changing forecast graphs')
+
+          marker=re.compile(rb'<!-- KS-RESEARCH:[a-z0-9_]+:START -->.*?<!-- KS-RESEARCH:[a-z0-9_]+:END -->',re.S)
+          changed=[]
+          for rel in files:
+              old=(backup/rel).read_bytes()
+              new=(stage/rel).read_bytes()
+              if marker.sub(b'',old)!=marker.sub(b'',new):
+                  raise RuntimeError('Unsafe change outside article/ranking markers: '+rel)
+              if b'data-forecast' not in new or b'</main>' not in new:
+                  raise RuntimeError('Lost existing forecast content: '+rel)
+              if new!=old: changed.append(rel)
+          if not changed:
+              print('PASS / NO CHANGE: all current live pages already match desired research content')
+              sys.exit(0)
+
+          for rel in changed:
+              if fetch_public(rel,'before-upload')!=(backup/rel).read_bytes():
+                  raise RuntimeError('Concurrent production change detected, aborting: '+rel)
+
+          print('Safe changed pages:',len(changed),'of 10. Backups verified; uploading HTML only.')
+          upload_started=False
+          try:
+              upload_started=True
+              ftp_run(['put "'+str(stage/rel)+'" -o "/kanto/'+rel+'"' for rel in changed])
+              for rel in changed:
+                  if fetch_public(rel,'verify')!=(stage/rel).read_bytes():
+                      raise RuntimeError('Post-deploy public byte comparison failed: '+rel)
+              print('PASS: BEST9 and spot articles deployed/expired on Lolipop, all changed public files matched byte-for-byte')
+          except Exception:
+              if upload_started:
+                  try:
+                      ftp_run(['put "'+str(backup/rel)+'" -o "/kanto/'+rel+'"' for rel in changed])
+                      print('ROLLBACK: all affected HTML restored from verified backup')
+                  except Exception:
+                      print('CRITICAL: rollback failed; inspect GitHub Action and live site immediately',file=sys.stderr)
+              raise
+          PY

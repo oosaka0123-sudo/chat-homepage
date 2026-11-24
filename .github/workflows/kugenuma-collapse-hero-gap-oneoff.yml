@@ -1,0 +1,150 @@
+name: One-off Kugenuma gap fix to Lolipop
+on:
+  push:
+    branches: [ops/kugenuma-collapse-hero-gap-20261124]
+    paths: ['.github/workflows/kugenuma-collapse-hero-gap-oneoff.yml']
+permissions:
+  contents: read
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: https://kanto.rss7.net
+      ASSET: app-pilot-a0a4193.js
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/kanto-surfer-ks
+          ref: d7ea639e3eae7eb08f4f0c636a177dabbbf0283e
+          path: kanto-src
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Build and stage only Kugenuma
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l kanto-src/scripts/build_pages_site.php
+          node --check kanto-src/prototype/spot-forecast/app.js
+          mkdir -p "$RUNNER_TEMP/kanto-data" "$RUNNER_TEMP/stage"
+          for id in kugenuma yuigahama oarai_onuki kashima_hirai katakai ichinomiya taito onjuku kamogawa_maruki; do
+            curl -4 -fsSL --retry 3 "$TARGET/data/$id.json" -o "$RUNNER_TEMP/kanto-data/$id.json"
+          done
+          php kanto-src/scripts/build_pages_site.php --public-dir="$RUNNER_TEMP/kanto-data" --output-dir="$RUNNER_TEMP/built"
+          cp "$RUNNER_TEMP/built/spots/kugenuma/index.html" "$RUNNER_TEMP/stage/index.html"
+          cp "$RUNNER_TEMP/built/app.js" "$RUNNER_TEMP/stage/$ASSET"
+          python3 - <<'PY'
+          import os, re, pathlib
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'stage'/'index.html'
+          s=p.read_text()
+          s,n=re.subn(r'src="../../app\.js\?v=[a-f0-9]+"', 'src="'+os.environ['ASSET']+'"',s)
+          assert n==1
+          assert s.count('id="advice-title"') == 1
+          assert s.count('KANTO SURFER KS / SURF FORECAST') == 1
+          assert '<section class="beta-intro"' not in s
+          assert s.index('<h1 class="kugenuma-video-hero__title">') < s.index('<p class="kugenuma-video-hero__eyebrow">') < s.index('<p class="kugenuma-video-hero__lead">') < s.index('<div class="kugenuma-video-hero__advice">')
+          assert s.count('<h2 id="advice-title">今日のアドバイス</h2>') == 1
+          assert 'align-items:flex-start' in s
+          assert 'src="https://www.imocwx.com/cwm/cwm_jp.gif"' in s
+          assert '<body class="kugenuma-landing">' in s
+          assert '.kugenuma-landing .site-header{position:fixed' in s
+          assert '.kugenuma-landing.is-scrolled .site-header{background:' in s
+          assert 'window.addEventListener("scroll", updateHeader, {passive:true})' in s
+          assert 'min-height:100svh' not in s
+          assert '.kugenuma-video-hero{padding:110px 16px 20px}' in s
+          assert '.kugenuma-landing main > .forecast-section[aria-labelledby="advice-title"]{padding-top:16px}' in s
+          assert '<h1 class="kugenuma-video-hero__title">鵠沼の波情報</h1>' in s
+          assert s.count('<h1') == 1
+          assert 'KUGENUMA</p>' not in s
+          assert 'autoplay muted loop playsinline' in s
+          assert 'kugenuma-hero-muted.mp4' in s
+          assert '<footer class="site-footer">' in s
+          assert s.index('<footer class="site-footer">') > s.index('</main>')
+          assert 'data-kugenuma-advice' in s and 'data-tide-phase' in s and 'menu-button' in s
+          p.write_text(s)
+          PY
+          test "$(find "$RUNNER_TEMP/stage" -type f | wc -l)" -eq 2
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Backup only the existing Kugenuma page
+        id: backup
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          get index.html -o "$RUNNER_TEMP/old-index.html"
+          bye
+          EOF
+          test -s "$RUNNER_TEMP/old-index.html"
+          grep -q 'data-forecast' "$RUNNER_TEMP/old-index.html"
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/?preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/old-live.html"
+          cmp "$RUNNER_TEMP/old-index.html" "$RUNNER_TEMP/old-live.html"
+          curl -4 -fsSL --retry 3 "$TARGET/media/kugenuma-hero-muted.mp4" -o "$RUNNER_TEMP/existing-hero.mp4"
+          test -s "$RUNNER_TEMP/existing-hero.mp4"
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/$ASSET?preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/existing-app.js"
+          cmp "$RUNNER_TEMP/stage/$ASSET" "$RUNNER_TEMP/existing-app.js"
+      - name: Upload only Kugenuma HTML keeping the dedicated JS unchanged
+        id: upload
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          put "$RUNNER_TEMP/stage/index.html" -o index.html
+          bye
+          EOF
+      - name: Verify public files byte for byte
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in index.html "$ASSET"; do
+            curl -4 -fsSL --retry 3 -H 'Cache-Control: no-cache' "$TARGET/spots/kugenuma/$f?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-$f"
+            cmp "$RUNNER_TEMP/stage/$f" "$RUNNER_TEMP/live-$f"
+          done
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-dir.html"
+          cmp "$RUNNER_TEMP/stage/index.html" "$RUNNER_TEMP/live-dir.html"
+          echo 'PASS: Kugenuma gap fix HTML matches byte-for-byte; no other spot changed.'
+      - name: Restore previous page if release fails
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          put "$RUNNER_TEMP/old-index.html" -o index.html
+          bye
+          EOF

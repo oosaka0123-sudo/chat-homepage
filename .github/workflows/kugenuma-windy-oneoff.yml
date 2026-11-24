@@ -41,7 +41,7 @@ jobs:
           built = (tmp / "built/spots/kugenuma/index.html").read_text(encoding="utf-8")
           start = "<!-- KUGENUMA_WINDY_START -->"
           end = "<!-- KUGENUMA_WINDY_END -->"
-          daily = '    <section class="forecast-section daily-section" id="daily-forecast"'
+          daily = '<section class="forecast-section daily-section" id="daily-forecast"'
           assert built.count(start) == built.count(end) == 1
           assert start not in live and end not in live, "already deployed: refusing duplicate"
           assert live.count(daily) == built.count(daily) == 1

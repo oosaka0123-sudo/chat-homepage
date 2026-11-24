@@ -51,10 +51,9 @@ jobs:
           without = live[:line_start] + live[end:]
           assert without[:line_start] + windy + without[line_start:] == live
           spot_pos = without.index(spot)
-          spot_line = without.rfind("\n", 0, spot_pos) + 1
-          assert without[spot_line:spot_pos].strip() == "" and len(without[spot_line:spot_pos]) <= 16, "unexpected 05 indentation"
-          insertion = windy + "\n"
-          output = without[:spot_line] + insertion + without[spot_line:]
+          assert without[spot_pos - len("</section>"):spot_pos] == "</section>", "04 section must close before 05"
+          insertion = "\n" + windy + "\n    "
+          output = without[:spot_pos] + insertion + without[spot_pos:]
           assert output.replace(insertion, "", 1) == without
           assert output.count(begin) == output.count(finish) == 1
           assert output.index('id="forecast-title"') < output.index('id="daily-title"') < output.index(begin) < output.index(spot) < output.index('id="wide-wave-title"')

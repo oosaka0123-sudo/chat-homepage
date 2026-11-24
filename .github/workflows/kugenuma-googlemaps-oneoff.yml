@@ -1,0 +1,150 @@
+name: One-off Kugenuma Google Maps CTA to Lolipop
+on:
+  push:
+    branches: [ops/kugenuma-googlemaps-20261125]
+    paths: ['.github/workflows/kugenuma-googlemaps-oneoff.yml']
+permissions:
+  contents: read
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: https://kanto.rss7.net
+      ASSET: app-pilot-a0a4193.js
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/kanto-surfer-ks
+          ref: 625e484e983250ef3b4f728cc9a3acfd931fba34
+          path: kanto-src
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Stage Google Maps button on current live Kugenuma HTML only
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l kanto-src/scripts/build_pages_site.php
+          node --check kanto-src/prototype/spot-forecast/app.js
+          mkdir -p "$RUNNER_TEMP/kanto-data" "$RUNNER_TEMP/stage"
+          for id in kugenuma yuigahama oarai_onuki kashima_hirai katakai ichinomiya taito onjuku kamogawa_maruki; do
+            curl -4 -fsSL --retry 3 "$TARGET/data/$id.json" -o "$RUNNER_TEMP/kanto-data/$id.json"
+          done
+          php kanto-src/scripts/build_pages_site.php --public-dir="$RUNNER_TEMP/kanto-data" --output-dir="$RUNNER_TEMP/built"
+          curl -4 -fsSL --retry 3 -H 'Cache-Control: no-cache' "$TARGET/spots/kugenuma/?preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/base-live.html"
+          python3 - <<'PY'
+          import os, pathlib
+          tmp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          live = (tmp/"base-live.html").read_text(encoding="utf-8")
+          generated = (tmp/"built/spots/kugenuma/index.html").read_text(encoding="utf-8")
+          css_start = '        .kugenuma-video-hero__map-link{'
+          css_end = '        @media(max-width:520px){'
+          link_start = '        <a class="kugenuma-video-hero__map-link"'
+          link_end = '      </div>\n    </section>\n    <script>'
+          assert generated.count(css_start) == generated.count(link_start) == 1
+          assert css_start not in live and link_start not in live, "already deployed: abort duplicate update"
+          assert live.count(css_end) == live.count(link_end) == 1
+          assert generated.count(link_end) == 1
+          css = generated[generated.index(css_start):generated.index(css_end, generated.index(css_start))]
+          link = generated[generated.index(link_start):generated.index(link_end, generated.index(link_start))]
+          assert "google.com/maps/dir/?api=1&amp;destination=" in link
+          assert "サーフビレッジ" in link
+          assert 'target="_blank" rel="noopener noreferrer"' in link
+          assert "kugenuma-video-hero__map-note" in link
+          result = live.replace(css_end, css + css_end, 1).replace(link_end, link + link_end, 1)
+          assert result.replace(css, "", 1).replace(link, "", 1) == live, "unexpected extra edits"
+          assert result.count('class="kugenuma-video-hero__map-link"') == 1
+          assert result.count('id="camera-title"') == 1
+          assert result.count('id="wide-wave-title"') == 1
+          assert result.index('id="camera-title"') < result.index('class="kugenuma-video-hero__map-link"') < result.index(link_end)
+          assert result.count('data-kugenuma-advice') == 1
+          assert 'min-height:100svh' in result and 'kugenuma-hero-muted.mp4' in result
+          (tmp/"stage/index.html").write_text(result, encoding="utf-8")
+          print("PASS: only Google Maps CTA and scoped CSS inserted; existing production page preserved")
+          PY
+          test "$(find "$RUNNER_TEMP/stage" -type f | wc -l)" -eq 1
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Backup only the existing Kugenuma page
+        id: backup
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          get index.html -o "$RUNNER_TEMP/old-index.html"
+          bye
+          EOF
+          test -s "$RUNNER_TEMP/old-index.html"
+          grep -q 'data-forecast' "$RUNNER_TEMP/old-index.html"
+          cmp "$RUNNER_TEMP/base-live.html" "$RUNNER_TEMP/old-index.html"
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/?preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/old-live.html"
+          cmp "$RUNNER_TEMP/old-index.html" "$RUNNER_TEMP/old-live.html"
+          curl -4 -fsSL --retry 3 "$TARGET/media/kugenuma-hero-muted.mp4" -o "$RUNNER_TEMP/existing-hero.mp4"
+          test -s "$RUNNER_TEMP/existing-hero.mp4"
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/$ASSET?preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/existing-app.js"
+          test -s "$RUNNER_TEMP/existing-app.js"
+      - name: Upload only Kugenuma HTML keeping the dedicated JS unchanged
+        id: upload
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          put "$RUNNER_TEMP/stage/index.html" -o index.html
+          bye
+          EOF
+      - name: Verify deployed Google Maps CTA and unchanged dedicated JS
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -4 -fsSL --retry 3 -H 'Cache-Control: no-cache' "$TARGET/spots/kugenuma/index.html?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-index.html"
+          cmp "$RUNNER_TEMP/stage/index.html" "$RUNNER_TEMP/live-index.html"
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-dir.html"
+          cmp "$RUNNER_TEMP/stage/index.html" "$RUNNER_TEMP/live-dir.html"
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/$ASSET?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-app.js"
+          cmp "$RUNNER_TEMP/existing-app.js" "$RUNNER_TEMP/live-app.js"
+          echo 'PASS: only Kugenuma Google Maps directions CTA added; public HTML byte-perfect, JS unchanged.'
+      - name: Restore previous page if release fails
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          put "$RUNNER_TEMP/old-index.html" -o index.html
+          bye
+          EOF

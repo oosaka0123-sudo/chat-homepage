@@ -1,0 +1,155 @@
+name: One-off Kugenuma Windy map below graphs to Lolipop
+on:
+  push:
+    branches: [ops/kugenuma-windy-20261125]
+    paths: ['.github/workflows/kugenuma-windy-oneoff.yml']
+permissions:
+  contents: read
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    env:
+      TARGET: https://kanto.rss7.net
+      ASSET: app-pilot-a0a4193.js
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/kanto-surfer-ks
+          ref: 67c425f9de3e7b9c188a9af0138a04bf43f56354
+          path: kanto-src
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Add only Windy section to current live Kugenuma HTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l kanto-src/scripts/build_pages_site.php
+          node --check kanto-src/prototype/spot-forecast/app.js
+          mkdir -p "$RUNNER_TEMP/kanto-data" "$RUNNER_TEMP/stage"
+          for id in kugenuma yuigahama oarai_onuki kashima_hirai katakai ichinomiya taito onjuku kamogawa_maruki; do
+            curl -4 -fsSL --retry 3 "$TARGET/data/$id.json" -o "$RUNNER_TEMP/kanto-data/$id.json"
+          done
+          php kanto-src/scripts/build_pages_site.php --public-dir="$RUNNER_TEMP/kanto-data" --output-dir="$RUNNER_TEMP/built"
+          curl -4 -fsSL --retry 3 -H 'Cache-Control: no-cache' "$TARGET/spots/kugenuma/?preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/base-live.html"
+          python3 - <<'PY'
+          import os, pathlib
+          tmp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          live = (tmp / "base-live.html").read_text(encoding="utf-8")
+          built = (tmp / "built/spots/kugenuma/index.html").read_text(encoding="utf-8")
+          start = "<!-- KUGENUMA_WINDY_START -->"
+          end = "<!-- KUGENUMA_WINDY_END -->"
+          daily = '    <section class="forecast-section daily-section" id="daily-forecast"'
+          assert built.count(start) == built.count(end) == 1
+          assert start not in live and end not in live, "already deployed: refusing duplicate"
+          assert live.count(daily) == built.count(daily) == 1
+          segment = built[built.index(start):built.index(end) + len(end)]
+          assert segment.count("<iframe ") == 1
+          assert "embed.windy.com/embed2.html" in segment
+          assert "overlay=waves" in segment and "product=ecmwfWaves" in segment
+          assert 'data-windy-layer="waves"' in segment and 'data-windy-layer="wind"' in segment
+          assert "root.setAttribute" in segment and "searchParams.set" in segment
+          assert "35.3148611" in segment and "139.4708889" in segment
+          assert "loading=\"lazy\"" in segment
+          assert "windy" in segment.lower()
+          assert 'id="forecast-title"' in live and 'id="daily-title"' in live
+          assert live.index('id="forecast-title"') < live.index(daily) < live.index('id="daily-title"')
+          insertion = segment + "\n    "
+          result = live.replace(daily, insertion + daily, 1)
+          assert result.replace(insertion, "", 1) == live, "existing published HTML altered"
+          assert result.count(start) == result.count(end) == 1
+          assert result.index('id="forecast-title"') < result.index(start) < result.index(daily)
+          assert result.count('id="kugenuma-windy"') == 1
+          assert result.count('id="kugenuma-access-map"') == 1
+          assert result.count('id="wide-wave-title"') == 1
+          assert result.count('data-kugenuma-advice') == 1
+          assert 'min-height:100svh' in result and 'kugenuma-hero-muted.mp4' in result
+          (tmp / "stage/index.html").write_text(result, encoding="utf-8")
+          print("PASS: Windy map added below graphs; previous HTML preserved byte-for-byte")
+          PY
+          test "$(find "$RUNNER_TEMP/stage" -type f | wc -l)" -eq 1
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Backup only the existing Kugenuma page
+        id: backup
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          get index.html -o "$RUNNER_TEMP/old-index.html"
+          bye
+          EOF
+          test -s "$RUNNER_TEMP/old-index.html"
+          grep -q 'data-forecast' "$RUNNER_TEMP/old-index.html"
+          cmp "$RUNNER_TEMP/base-live.html" "$RUNNER_TEMP/old-index.html"
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/?preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/old-live.html"
+          cmp "$RUNNER_TEMP/old-index.html" "$RUNNER_TEMP/old-live.html"
+          curl -4 -fsSL --retry 3 "$TARGET/media/kugenuma-hero-muted.mp4" -o "$RUNNER_TEMP/existing-hero.mp4"
+          test -s "$RUNNER_TEMP/existing-hero.mp4"
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/$ASSET?preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/existing-app.js"
+          test -s "$RUNNER_TEMP/existing-app.js"
+      - name: Upload only Kugenuma HTML keeping the dedicated JS unchanged
+        id: upload
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          put "$RUNNER_TEMP/stage/index.html" -o index.html
+          bye
+          EOF
+      - name: Verify published Windy iframe and unchanged dedicated JS
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -4 -fsSL --retry 3 -H 'Cache-Control: no-cache' "$TARGET/spots/kugenuma/index.html?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-index.html"
+          cmp "$RUNNER_TEMP/stage/index.html" "$RUNNER_TEMP/live-index.html"
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-dir.html"
+          cmp "$RUNNER_TEMP/stage/index.html" "$RUNNER_TEMP/live-dir.html"
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/$ASSET?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-app.js"
+          cmp "$RUNNER_TEMP/existing-app.js" "$RUNNER_TEMP/live-app.js"
+          echo 'PASS: Windy below Kugenuma graphs; production HTML byte-perfect and JS unchanged.'
+      - name: Restore previous page if release fails
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          put "$RUNNER_TEMP/old-index.html" -o index.html
+          bye
+          EOF

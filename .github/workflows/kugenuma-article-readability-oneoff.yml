@@ -1,0 +1,130 @@
+name: One-off Kugenuma GPT article readability
+on:
+  push:
+    branches: [ops/kugenuma-article-readability-20261124]
+    paths: ['.github/workflows/kugenuma-article-readability-oneoff.yml']
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TARGET: https://kanto.rss7.net
+    steps:
+      - name: Fetch live baseline and verify article
+        run: |
+          set -euo pipefail
+          curl -4 -fsSL --retry 3 "$TARGET/spots/kugenuma/?preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/public-before.html"
+          python3 - <<'PY'
+          import pathlib,os
+          b=(pathlib.Path(os.environ['RUNNER_TEMP'])/'public-before.html').read_bytes()
+          a=b'<section class="forecast-section" aria-labelledby="ks-article-title">'
+          assert b.count(a)==1
+          part=b[b.index(a):b.index(b'</section>',b.index(a))]
+          assert part.count(b'<article class="forecast-panel" style="padding:1rem">')==1
+          assert b'2026-11-25' in part
+          assert b'ks-gpt-article-mobile-css' not in b
+          for marker in [b'data-forecast',b'data-daily-body',b'kugenuma-video-hero',b'data-kugenuma-advice',b'<footer class="site-footer">']:
+              assert marker in b, marker
+          print('PASS: GPT article and existing forecast/10-day sections found')
+          PY
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Backup exact live Kugenuma HTML using existing secure FTPS
+        id: backup
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          get index.html -o "$RUNNER_TEMP/old-index.html"
+          bye
+          LFTP_EOF
+          cmp "$RUNNER_TEMP/old-index.html" "$RUNNER_TEMP/public-before.html"
+      - name: Make exact isolated HTML patch
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,pathlib
+          base=pathlib.Path(os.environ['RUNNER_TEMP'])
+          old=(base/'old-index.html').read_bytes()
+          anchor=b'<section class="forecast-section" aria-labelledby="ks-article-title">'
+          start=old.index(anchor)
+          end=old.index(b'</section>',start)
+          original=b'<article class="forecast-panel" style="padding:1rem">'
+          changed=b'<article class="forecast-panel ks-gpt-article" style="padding:1rem">'
+          assert old[start:end].count(original)==1 and old.count(b'</head>')==1
+          style=b'''<style id="ks-gpt-article-mobile-css">
+          .ks-gpt-article{max-width:100%;overflow-wrap:anywhere}
+          .ks-gpt-article h3{font-size:clamp(19px,4.8vw,25px);line-height:1.5;letter-spacing:.015em;margin:12px 0 18px}
+          .ks-gpt-article>p:not(.forecast-note){font-size:clamp(14px,3.7vw,16px);line-height:1.9;letter-spacing:0;margin:0 0 1.1em}
+          .ks-gpt-article>.forecast-note{font-size:12px;line-height:1.7}
+          .ks-gpt-article details{font-size:13px;line-height:1.7;margin:16px 0}
+          @media(max-width:520px){.ks-gpt-article{padding:16px!important}.ks-gpt-article h3{font-size:19px}.ks-gpt-article>p:not(.forecast-note){font-size:14px;line-height:1.85}}
+          </style>
+          '''
+          new=old[:start]+old[start:end].replace(original,changed,1)+old[end:]
+          new=new.replace(b'</head>',style+b'</head>',1)
+          assert new.replace(changed,original,1).replace(style,b'',1)==old
+          (base/'new-index.html').write_bytes(new)
+          print('PASS: only article class and scoped CSS inserted; all other bytes unchanged')
+          PY
+      - name: Upload only the Kugenuma article HTML
+        id: upload
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          put "$RUNNER_TEMP/new-index.html" -o index.html
+          bye
+          LFTP_EOF
+      - name: Check live page byte for byte
+        id: verify
+        run: |
+          set -euo pipefail
+          curl -4 -fsSL --retry 3 -H 'Cache-Control: no-cache' "$TARGET/spots/kugenuma/?verify=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/public-after.html"
+          cmp "$RUNNER_TEMP/new-index.html" "$RUNNER_TEMP/public-after.html"
+          grep -q 'ks-gpt-article-mobile-css' "$RUNNER_TEMP/public-after.html"
+          grep -q 'data-daily-body' "$RUNNER_TEMP/public-after.html"
+          grep -q 'data-forecast' "$RUNNER_TEMP/public-after.html"
+          echo 'PASS: mobile article improvement visible; only Kugenuma index.html changed'
+      - name: Restore exact prior HTML if upload or verification fails
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ftp:passive-mode true
+          set net:timeout 20
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          cd /kanto/spots/kugenuma
+          put "$RUNNER_TEMP/old-index.html" -o index.html
+          bye
+          LFTP_EOF
+          echo 'ROLLBACK: restored previous Kugenuma HTML'

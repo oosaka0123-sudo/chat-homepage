@@ -749,10 +749,10 @@ html:not(.js) .site-header{position:relative}
 }
 .premium-hero-inner{position:relative;z-index:2;padding-top:9rem;padding-bottom:clamp(3rem,8vw,6rem)}
 .premium-hero h1{
-  max-width:1050px;
+  max-width:min(100%,1050px);
   margin:0;
-  font-size:clamp(3.25rem,9vw,8rem);
-  line-height:.98;
+  font-size:clamp(3rem,7.4vw,7rem);
+  line-height:1.04;
   letter-spacing:-.065em;
 }
 .premium-hero h1 span{color:#fff}
@@ -897,7 +897,7 @@ html:not(.js) .site-header{position:relative}
 @media(max-width:639px){
   .premium-hero{min-height:760px}
   .premium-hero-inner{padding-top:7rem}
-  .premium-hero h1{font-size:clamp(3.2rem,16vw,5rem)}
+  .premium-hero h1{font-size:clamp(2rem,9vw,3.6rem);line-height:1.06}
   .premium-hero-image{background-position:62% center}
   .portfolio-card{min-height:420px}
   .ownership-visual{min-height:300px}

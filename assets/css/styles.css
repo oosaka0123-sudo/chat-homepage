@@ -901,6 +901,7 @@ html:not(.js) .site-header{position:relative}
   .premium-hero-image{background-position:62% center}
   .portfolio-card{min-height:420px}
   .ownership-visual{min-height:300px}
+  .ownership-visual strong{font-size:clamp(1.7rem,7.3vw,3rem);line-height:.95}
 }
 
 /* Homepage keeps common-menu.js for deploy compatibility, but uses the native premium header UI. */

@@ -1,0 +1,155 @@
+name: One-off Kanto model snapshot to Lolipop (10 JSON)
+on:
+  push:
+    branches: [ops/kanto-data-sync-20261127]
+permissions:
+  contents: read
+concurrency:
+  group: kanto-data-lolipop-oneoff
+  cancel-in-progress: false
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TARGET: https://kanto.rss7.net
+      SNAPSHOT_URL: https://github.com/oosaka0123-sudo/kanto-surfer-ks/releases/download/kanto-data-snapshot-20261127-0aa9f41/kanto-public-data-0aa9f41.tar
+      SNAPSHOT_SHA256: b98b3d62f7cab536f745a41c3273482d151d6d69aaf2a4388addc9590937dc6f
+    steps:
+      - name: Fetch immutable public-only Pages snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 "$SNAPSHOT_URL" -o "$RUNNER_TEMP/kanto-data.tar"
+          echo "$SNAPSHOT_SHA256  $RUNNER_TEMP/kanto-data.tar" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/snapshot" "$RUNNER_TEMP/backup"
+          tar -xf "$RUNNER_TEMP/kanto-data.tar" -C "$RUNNER_TEMP/snapshot"
+          test "$(find "$RUNNER_TEMP/snapshot/data" -maxdepth 1 -name '*.json' | wc -l)" -eq 10
+          python3 - <<'PY'
+          import datetime, json, os, pathlib
+          d=pathlib.Path(os.environ['RUNNER_TEMP'])/'snapshot/data'
+          ids=['kugenuma','yuigahama','oarai_onuki','kashima_hirai','katakai','ichinomiya','taito','onjuku','kamogawa_maruki']
+          target=datetime.date(2026,11,27)
+          generated=set()
+          for id in ids:
+              x=json.loads((d/(id+'.json')).read_text(encoding='utf-8'))
+              assert x['spot']['id']==id, id
+              assert x['daily']['days']==10 and len(x['daily']['rows'])==10, id
+              assert x['daily']['rows'][0]['date']==target.isoformat(), id
+              generated.add(x['generated_at'])
+          assert len(generated)==1, generated
+          t=datetime.datetime.fromisoformat(generated.pop())
+          assert t.tzinfo is not None
+          assert datetime.datetime(2026,11,26,22,tzinfo=datetime.timezone.utc)<t<=datetime.datetime.now(datetime.timezone.utc)+datetime.timedelta(minutes=15), t
+          json.loads((d/'index.json').read_text(encoding='utf-8'))
+          assert len(list(d.glob('*.json')))==10
+          print('PASS: 9 identical-generation forecast payloads, 10 future daily rows each, valid public index')
+          PY
+
+      - name: Install FTPS client
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+
+      - name: Backup exactly ten current public data files
+        id: backup
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+                    get "/kanto/data/kugenuma.json" -o "$RUNNER_TEMP/backup/kugenuma.json"
+          get "/kanto/data/yuigahama.json" -o "$RUNNER_TEMP/backup/yuigahama.json"
+          get "/kanto/data/oarai_onuki.json" -o "$RUNNER_TEMP/backup/oarai_onuki.json"
+          get "/kanto/data/kashima_hirai.json" -o "$RUNNER_TEMP/backup/kashima_hirai.json"
+          get "/kanto/data/katakai.json" -o "$RUNNER_TEMP/backup/katakai.json"
+          get "/kanto/data/ichinomiya.json" -o "$RUNNER_TEMP/backup/ichinomiya.json"
+          get "/kanto/data/taito.json" -o "$RUNNER_TEMP/backup/taito.json"
+          get "/kanto/data/onjuku.json" -o "$RUNNER_TEMP/backup/onjuku.json"
+          get "/kanto/data/kamogawa_maruki.json" -o "$RUNNER_TEMP/backup/kamogawa_maruki.json"
+          get "/kanto/data/index.json" -o "$RUNNER_TEMP/backup/index.json"
+          bye
+          LFTP_EOF
+          test "$(find "$RUNNER_TEMP/backup" -maxdepth 1 -name '*.json' | wc -l)" -eq 10
+          echo "PASS: ten production JSON files backed up before changes"
+
+      - name: Upload exactly ten model JSON files to /kanto/data, no deletes
+        id: upload
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+                    put "$RUNNER_TEMP/snapshot/data/kugenuma.json" -o "/kanto/data/kugenuma.json"
+          put "$RUNNER_TEMP/snapshot/data/yuigahama.json" -o "/kanto/data/yuigahama.json"
+          put "$RUNNER_TEMP/snapshot/data/oarai_onuki.json" -o "/kanto/data/oarai_onuki.json"
+          put "$RUNNER_TEMP/snapshot/data/kashima_hirai.json" -o "/kanto/data/kashima_hirai.json"
+          put "$RUNNER_TEMP/snapshot/data/katakai.json" -o "/kanto/data/katakai.json"
+          put "$RUNNER_TEMP/snapshot/data/ichinomiya.json" -o "/kanto/data/ichinomiya.json"
+          put "$RUNNER_TEMP/snapshot/data/taito.json" -o "/kanto/data/taito.json"
+          put "$RUNNER_TEMP/snapshot/data/onjuku.json" -o "/kanto/data/onjuku.json"
+          put "$RUNNER_TEMP/snapshot/data/kamogawa_maruki.json" -o "/kanto/data/kamogawa_maruki.json"
+          put "$RUNNER_TEMP/snapshot/data/index.json" -o "/kanto/data/index.json"
+          bye
+          LFTP_EOF
+
+      - name: Verify public HTTPS JSON bytes for all ten files
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in kugenuma yuigahama oarai_onuki kashima_hirai katakai ichinomiya taito onjuku kamogawa_maruki index; do
+            curl -4 -fsSL --retry 3 --max-time 20 -H "Cache-Control: no-cache" "$TARGET/data/$name.json?v=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/$name-live.json"
+            cmp -s "$RUNNER_TEMP/snapshot/data/$name.json" "$RUNNER_TEMP/$name-live.json" || { echo "::error::JSON mismatch at $name"; exit 1; }
+          done
+          echo "PASS: all ten Lolipop HTTPS JSON files match source artifact byte-for-byte"
+
+      - name: Restore ten data files if upload or verification fails
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+                    put "$RUNNER_TEMP/backup/kugenuma.json" -o "/kanto/data/kugenuma.json"
+          put "$RUNNER_TEMP/backup/yuigahama.json" -o "/kanto/data/yuigahama.json"
+          put "$RUNNER_TEMP/backup/oarai_onuki.json" -o "/kanto/data/oarai_onuki.json"
+          put "$RUNNER_TEMP/backup/kashima_hirai.json" -o "/kanto/data/kashima_hirai.json"
+          put "$RUNNER_TEMP/backup/katakai.json" -o "/kanto/data/katakai.json"
+          put "$RUNNER_TEMP/backup/ichinomiya.json" -o "/kanto/data/ichinomiya.json"
+          put "$RUNNER_TEMP/backup/taito.json" -o "/kanto/data/taito.json"
+          put "$RUNNER_TEMP/backup/onjuku.json" -o "/kanto/data/onjuku.json"
+          put "$RUNNER_TEMP/backup/kamogawa_maruki.json" -o "/kanto/data/kamogawa_maruki.json"
+          put "$RUNNER_TEMP/backup/index.json" -o "/kanto/data/index.json"
+          bye
+          LFTP_EOF
+          echo "::warning::Restored ten prior public JSON files after verification failure"

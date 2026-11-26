@@ -33,8 +33,36 @@
   ]
 }
 </script>
+<style>
+.ch-service-page .breadcrumb{padding-block:14px}
+.ch-service-hero{background:#101e35;color:#fff;padding:clamp(36px,6vw,84px) 0;overflow:hidden}
+.ch-service-grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,64px);align-items:center}
+.ch-service-hero h1{font-size:clamp(34px,5vw,64px);line-height:1.25;letter-spacing:-.035em;color:#fff;margin:14px 0 20px}
+.ch-service-hero h1 span{color:#80c9ff}
+.ch-service-hero p{line-height:1.8;color:#e2eaf6}
+.ch-kicker{font-size:12px;font-weight:800;letter-spacing:.16em;color:#1767ac}
+.ch-service-hero .ch-kicker{color:#80c9ff}
+.ch-actions{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin:24px 0 14px}
+.ch-secondary{color:#fff;text-decoration:underline}
+.ch-service-hero .ch-note{font-size:13px;color:#cbd8e9}
+.ch-showcase{position:relative;border:1px solid #ffffff35;border-radius:18px;overflow:hidden;background:#203550}
+.ch-showcase img{display:block;width:100%;height:auto;aspect-ratio: 3/2;object-fit:cover}
+.ch-chat{padding:18px 22px;background:#fff;color:#14243b}
+.ch-chat small{color:#52647a}.ch-chat p{color:#14243b;margin:6px 0}.ch-chat strong{color:#12664a;font-size:14px}
+.ch-benefits{padding:32px 0;background:#eaf2fa;color:#14243b}
+.ch-three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.ch-three article{background:#fff;border-radius:12px;padding:24px;border:1px solid #dce5ef}
+.ch-three span{font-size:12px;letter-spacing:.12em;color:#1767ac;font-weight:700}
+.ch-three h2{font-size:22px;margin:10px 0}.ch-three p{margin:0;line-height:1.7}
+.ch-service-page main>.section{padding-block:clamp(38px,6vw,76px)}
+.ch-service-page .ch-blog{background:#132641;color:#fff}
+.ch-blog h2,.ch-blog .eyebrow{color:#fff}.ch-blog .ch-blog-name{color:#91d0ff;font-weight:700}
+.ch-blog .feature-list li{background:#203956;color:#fff;border-color:#54708f}
+.ch-blog .more-link{color:#fff}
+@media(max-width:720px){.ch-service-grid,.ch-three{grid-template-columns:1fr}.ch-three{gap:10px}.ch-three article{padding:18px}.ch-service-hero h1{font-size:clamp(30px,8.4vw,48px)}.ch-service-page .feature-list{gap:10px}.ch-service-page .feature-list li{padding:16px}.ch-showcase{max-width:480px}.ch-actions .btn{min-height:48px}}
+</style>
 </head>
-<body>
+<body class="ch-service-page">
 <a class="skip-link" href="#main">本文へスキップ</a>
 
 <header class="site-header">
@@ -69,16 +97,29 @@
     </ol>
   </nav>
 
-  <section class="hero" aria-labelledby="hero-heading">
-    <div class="container container-narrow">
-      <h1 id="hero-heading">サービス内容</h1>
-      <p class="page-lead">プロが最初にホームページを制作し、公開後はお客様自身がChatGPTで変更内容を伝え、GitHub経由で更新できるよう設定します。できること、向いている業種、普通のホームページ制作との違いをご案内します。</p>
+  <section class="ch-service-hero" aria-labelledby="hero-heading">
+    <div class="container ch-service-grid">
+      <div>
+        <p class="ch-kicker">WEB DESIGN × AI</p>
+        <h1 id="hero-heading">作って終わり、<br>じゃない。<br><span>育てるホームページ。</span></h1>
+        <p>あなたの事業にふさわしいデザインを。公開後は、いつもの言葉で自分で更新できる自由を。</p>
+        <div class="ch-actions"><a class="btn btn-primary" href="/#contact">無料で相談する</a><a class="ch-secondary" href="/demos/">制作デモを見る →</a></div>
+        <p class="ch-note">初期制作 150,000円〜 ／ 自分での更新は当社への更新料0円</p>
+      </div>
+      <div class="ch-showcase">
+        <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&amp;fit=crop&amp;w=1000&amp;q=84" alt="美容サロンの制作デモイメージ" width="1000" height="650">
+        <div class="ch-chat"><small>更新イメージ</small><p>「営業時間を18時までに変えて」</p><strong>✓ 変更内容を確認して公開へ</strong></div>
+      </div>
     </div>
   </section>
-
+  <section class="ch-benefits" aria-label="選ばれる理由"><div class="container ch-three">
+    <article><span>01 / DESIGN</span><h2>第一印象を変える。</h2><p>スマホでも美しく、事業の魅力が伝わるサイトを制作。</p></article>
+    <article><span>02 / FREEDOM</span><h2>更新をもっと自由に。</h2><p>写真や料金、お知らせを自分のタイミングで変更。</p></article>
+    <article><span>03 / OWNERSHIP</span><h2>あなたの資産に。</h2><p>GitHubは原則お客様が管理。必要なときはサポートも。</p></article>
+  </div></section>
   <section class="section" id="features" aria-labelledby="features-heading">
     <div class="container">
-      <h2 id="features-heading">できること</h2>
+      <p class="ch-kicker">WHAT YOU GET</p><h2 id="features-heading">事業に必要な機能を、ひとつに。</h2>
       <ul class="grid grid-2 feature-list">
         <li>レスポンシブ対応</li>
         <li>独自ドメイン設定（取得・維持費は別途）</li>
@@ -92,10 +133,10 @@
     </div>
   </section>
 
-  <section class="section" id="ai-blog" aria-labelledby="ai-blog-heading">
+  <section class="section ch-blog" id="ai-blog" aria-labelledby="ai-blog-heading">
     <div class="container">
       <p class="eyebrow">AI BLOG AUTOPILOT / 開発中・導入相談</p>
-      <h2 id="ai-blog-heading">AIブログ完全自動更新プラン</h2>
+      <h2 id="ai-blog-heading">忙しい毎日にも、<br>発信を続ける仕組みを。</h2><p class="ch-blog-name">AIブログ完全自動更新プラン</p>
       <p>毎日ブログを書く時間がない事業者様へ。事業内容や好みの文体を設定し、AI APIで記事の企画・執筆・品質確認・掲載を自動化するオプションを開発しています。</p>
       <ol class="grid grid-2 feature-list">
         <li>業種・テーマ・文体・禁止事項を初期設定</li>
@@ -110,7 +151,7 @@
 
   <section class="section section-alt" id="use-cases" aria-labelledby="use-cases-heading">
     <div class="container">
-      <h2 id="use-cases-heading">こんな事業者様に</h2>
+      <p class="ch-kicker">FOR YOUR BUSINESS</p><h2 id="use-cases-heading">あなたの業種にも。</h2>
       <ul class="grid grid-3 use-case-list">
         <li>建築・工務店</li>
         <li>店舗</li>
@@ -164,7 +205,7 @@
 
   <section class="section section-alt" aria-labelledby="next-heading">
     <div class="container container-narrow">
-      <h2 id="next-heading">料金・制作の流れもあわせてご覧ください</h2>
+      <h2 id="next-heading">あなたの事業に合うサイトを、一緒に。</h2>
       <p>ご相談から公開後の運用まで、実際の進み方は下記でご案内しています。</p>
       <div class="link-row">
         <a class="more-link" href="/price/">料金を見る</a>

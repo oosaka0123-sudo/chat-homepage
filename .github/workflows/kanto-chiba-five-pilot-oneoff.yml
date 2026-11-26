@@ -36,11 +36,35 @@ jobs:
           php -l kanto-src/scripts/build_public_forecast.php
           php -l kanto-src/scripts/tide_jma.php
           node --check kanto-src/prototype/spot-forecast/app.js
-          php kanto-src/scripts/fetch_open_meteo.php --output-dir="$RUNNER_TEMP/raw"
-          php kanto-src/scripts/normalize_open_meteo.php --input="$RUNNER_TEMP/raw/latest.json" --output-dir="$RUNNER_TEMP/normal"
-          php kanto-src/scripts/build_public_forecast.php --input="$RUNNER_TEMP/normal/latest.json" --output-dir="$RUNNER_TEMP/public" --validation-dir="kanto-src/data/validation"
-          node kanto-src/tests/kugenuma_hourly_smoke.cjs "$RUNNER_TEMP/public"
-          php kanto-src/scripts/build_pages_site.php --public-dir="$RUNNER_TEMP/public" --output-dir="$RUNNER_TEMP/built"
+          # Use the one verified and successful main Pages build. Never re-fetch Open-Meteo here:
+          # 9 weather endpoints returned HTTP 429 when this was run alongside the data sync.
+          curl -fsSL --retry 3 --max-time 45 \
+            'https://github.com/oosaka0123-sudo/kanto-surfer-ks/releases/download/kanto-data-snapshot-20261127-b4f673f/kanto-nine-data-b4f673f.tar' \
+            -o "$RUNNER_TEMP/chiba-data.tar"
+          echo 'd703cbe7e17a4ff42988f8dc07a7c633bd3b2930e1275c4d3ac862ea2668e5aa  '"$RUNNER_TEMP/chiba-data.tar" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/verified"
+          tar -xf "$RUNNER_TEMP/chiba-data.tar" -C "$RUNNER_TEMP/verified"
+          test "$(find "$RUNNER_TEMP/verified/data" -maxdepth 1 -name '*.json' | wc -l)" -eq 10
+          python3 - <<'PY'
+          import datetime,json,os,pathlib
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])/'verified/data'
+          js=json.loads((root/'index.json').read_text())
+          expected={'kugenuma':'D8','yuigahama':'D8','oarai_onuki':'D3','kashima_hirai':'D2','katakai':'CS','ichinomiya':'ZF','taito':'ZF','onjuku':'ZF','kamogawa_maruki':'ZF'}
+          stamp=set()
+          for id,station in expected.items():
+              d=json.loads((root/(id+'.json')).read_text())
+              if d['spot']['id']!=id or d['tide']['station_id']!=station: raise RuntimeError('Wrong spot or tide station '+id)
+              if len(d.get('hourly',[]))<70 or len(d.get('daily',{}).get('rows',[]))!=10: raise RuntimeError('Forecast gaps '+id)
+              stamp.add(d['generated_at'])
+          if len(stamp)!=1: raise RuntimeError('Inconsistent generation timestamps')
+          ts=datetime.datetime.fromisoformat(stamp.pop())
+          now=datetime.datetime.now(datetime.timezone.utc)
+          if not datetime.datetime(2026,11,26,22,tzinfo=datetime.timezone.utc)<=ts<=now or now-ts>datetime.timedelta(hours=4):
+              raise RuntimeError('Stale or future immutable forecast snapshot')
+          print('PASS: one verified main build reused, no API retry')
+          PY
+          node kanto-src/tests/kugenuma_hourly_smoke.cjs "$RUNNER_TEMP/verified/data"
+          php kanto-src/scripts/build_pages_site.php --public-dir="$RUNNER_TEMP/verified/data" --output-dir="$RUNNER_TEMP/built"
           for pair in kugenuma:D8 yuigahama:D8 oarai_onuki:D3 kashima_hirai:D2 katakai:CS ichinomiya:ZF taito:ZF onjuku:ZF kamogawa_maruki:ZF; do
             id="${pair%:*}"; station="${pair#*:}"
             jq -e --arg id "$id" --arg station "$station" '.spot.id==$id and .tide.station_id==$station and ([.hourly[].precipitation_probability_pct|select(.!=null)]|length)>=17' "$RUNNER_TEMP/built/data/$id.json" >/dev/null

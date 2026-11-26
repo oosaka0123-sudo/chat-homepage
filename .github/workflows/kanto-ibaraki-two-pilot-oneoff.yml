@@ -1,0 +1,134 @@
+name: One-off Kanto Ibaraki two-spot Lolipop deployment
+on:
+  push:
+    branches: [ops/kanto-ibaraki-two-pilot-20261126]
+    paths: ['.github/workflows/kanto-ibaraki-two-pilot-oneoff.yml']
+permissions:
+  contents: read
+concurrency:
+  group: kanto-best9-lolipop-production
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PRODUCTION: https://kanto.rss7.net
+    steps:
+      - name: Checkout exact verified Kanto commit
+        uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/kanto-surfer-ks
+          ref: 4fafedb9bca87aa97e6c99779b3bdf4f1e3909b2
+          path: kanto-src
+          persist-credentials: false
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: curl, openssl
+          coverage: none
+      - name: Build and verify official D2 D3 tide and all forecast payloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l kanto-src/scripts/build_pages_site.php
+          php -l kanto-src/scripts/build_public_forecast.php
+          php -l kanto-src/scripts/tide_jma.php
+          node --check kanto-src/prototype/spot-forecast/app.js
+          php kanto-src/scripts/fetch_open_meteo.php --output-dir="$RUNNER_TEMP/raw"
+          php kanto-src/scripts/normalize_open_meteo.php --input="$RUNNER_TEMP/raw/latest.json" --output-dir="$RUNNER_TEMP/normal"
+          php kanto-src/scripts/build_public_forecast.php --input="$RUNNER_TEMP/normal/latest.json" --output-dir="$RUNNER_TEMP/public" --validation-dir="kanto-src/data/validation"
+          node kanto-src/tests/kugenuma_hourly_smoke.cjs "$RUNNER_TEMP/public"
+          php kanto-src/scripts/build_pages_site.php --public-dir="$RUNNER_TEMP/public" --output-dir="$RUNNER_TEMP/built"
+          jq -e '.tide.station_id=="D3" and ([.hourly[].precipitation_probability_pct|select(.!=null)]|length)>0' "$RUNNER_TEMP/built/data/oarai_onuki.json"
+          jq -e '.tide.station_id=="D2" and ([.hourly[].precipitation_probability_pct|select(.!=null)]|length)>0' "$RUNNER_TEMP/built/data/kashima_hirai.json"
+          for slug in oarai-onuki kashima-hirai; do
+            f="$RUNNER_TEMP/built/spots/$slug/index.html"
+            grep -q 'IBARAKI_GOOGLE_MAP_START' "$f"
+            grep -q 'IBARAKI_WINDY_START' "$f"
+            grep -q '駐車場へ行く（Googleマップ）' "$f"
+            grep -q 'data-spot-advice' "$f"
+            ! grep -q 'kugenuma-hero-muted.mp4' "$f"
+            ! grep -q '35.3148611' "$f"
+          done
+      - name: Install FTPS client
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Back up, preserve research, upload and verify exactly five files
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          python3 - <<'PY'
+          import os, pathlib, subprocess, re, json
+          tmp=pathlib.Path(os.environ['RUNNER_TEMP'])
+          base=tmp/'built'
+          backup=tmp/'backup'
+          stage=tmp/'stage'
+          files=['data/oarai_onuki.json','data/kashima_hirai.json','app.js',
+                 'spots/oarai-onuki/index.html','spots/kashima-hirai/index.html']
+          if not os.getenv('FTP_USER') or not os.getenv('FTP_PASSWORD'):
+              raise RuntimeError('Existing FTPS secrets unavailable')
+          for rel in files:
+              for root in (backup,stage):
+                  (root/rel).parent.mkdir(parents=True,exist_ok=True)
+              (stage/rel).write_bytes((base/rel).read_bytes())
+          def ftp_run(commands):
+              cfg=['set cmd:fail-exit true','set ftp:ssl-force true',
+                   'set ftp:ssl-protect-data true','set ssl:verify-certificate true',
+                   'set ftp:passive-mode true','set net:timeout 20','set net:max-retries 3',
+                   'open -u "'+os.environ['FTP_USER']+'","'+os.environ['FTP_PASSWORD']+'" ftp.lolipop.jp']
+              cmd='\n'.join(cfg+commands+['bye'])+'\n'
+              r=subprocess.run(['lftp'],input=cmd,text=True,capture_output=True,timeout=240)
+              if r.returncode: raise RuntimeError('FTPS failed with exit status '+str(r.returncode))
+          def http_get(rel,key):
+              url=os.environ['PRODUCTION']+'/'+rel+'?ibaraki_'+key+'='+os.environ.get('GITHUB_RUN_ID','0')
+              r=subprocess.run(['curl','-4','-fsSL','--retry','3','--max-time','30',
+                                '-H','Cache-Control: no-cache',url],capture_output=True,timeout=150)
+              if r.returncode: raise RuntimeError('HTTP fetch failed: '+rel)
+              return r.stdout
+          ftp_run(['get "/kanto/'+rel+'" -o "'+str(backup/rel)+'"' for rel in files])
+          for rel in files:
+              actual=http_get(rel,'preflight')
+              if actual!=(backup/rel).read_bytes(): raise RuntimeError('Existing production mismatch: '+rel)
+          # Preserve exact morning/evening article bytes. Do not rerender or resummarize research.
+          for id,slug in [('oarai_onuki','oarai-onuki'),('kashima_hirai','kashima-hirai')]:
+              rel='spots/'+slug+'/index.html'
+              old=(backup/rel).read_bytes()
+              out=(stage/rel).read_bytes()
+              pat=re.compile(b'<!-- KS-RESEARCH:'+id.encode()+b':START -->.*?<!-- KS-RESEARCH:'+id.encode()+b':END -->',re.S)
+              old_match=pat.findall(old)
+              if len(old_match)!=1: raise RuntimeError('Research marker absent/duplicated: '+id)
+              if pat.search(out): raise RuntimeError('New page unexpectedly includes old research')
+              at=out.find(b'<section class="forecast-section"')
+              if at<0: raise RuntimeError('Camera insertion point missing: '+id)
+              out=out[:at]+old_match[0]+out[at:]
+              if pat.findall(out)!=old_match: raise RuntimeError('Research data changed: '+id)
+              if out.count(b'<h1')!=1 or out.count(b'data-forecast')<1: raise RuntimeError('Missing UI: '+id)
+              if not(out.index(b'IBARAKI_WINDY_START')<out.index(b'IBARAKI_GOOGLE_MAP_START')<out.index(b'</main>')):
+                  raise RuntimeError('Map order incorrect: '+id)
+              (stage/rel).write_bytes(out)
+          for rel in files:
+              if http_get(rel,'before_upload')!=(backup/rel).read_bytes():
+                  raise RuntimeError('Concurrent production update blocked release: '+rel)
+          print('PASS: backup, existing daily reports and exact five-file scope validated')
+          touched=False
+          try:
+              touched=True
+              ftp_run(['put "'+str(stage/rel)+'" -o "/kanto/'+rel+'"' for rel in files])
+              for rel in files:
+                  if http_get(rel,'post_upload')!=(stage/rel).read_bytes():
+                      raise RuntimeError('Public byte mismatch after deploy: '+rel)
+              print('PASS: Ibaraki 2 site HTML + 2 JSON + app.js, all five public files exact')
+          except Exception:
+              if touched:
+                  try:
+                      ftp_run(['put "'+str(backup/rel)+'" -o "/kanto/'+rel+'"' for rel in files])
+                      print('ROLLBACK: all five original files restored')
+                  except Exception:
+                      print('CRITICAL: rollback failed, inspect live site immediately',flush=True)
+              raise
+          PY

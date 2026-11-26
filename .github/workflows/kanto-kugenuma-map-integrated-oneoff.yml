@@ -1,0 +1,171 @@
+name: One-off Kanto Kugenuma integrated map on Lolipop
+on:
+  push:
+    branches: [ops/kugenuma-map-integrated-20261126]
+    paths: ['.github/workflows/kanto-kugenuma-map-integrated-oneoff.yml']
+permissions:
+  contents: read
+concurrency:
+  group: kanto-best9-lolipop-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PUBLIC_URL: https://kanto.rss7.net
+    steps:
+      - name: Checkout pinned Kanto source
+        uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/kanto-surfer-ks
+          ref: 1b5f355e04f2734ce3ca9b7b53d37a15726d0cea
+          path: kanto-src
+          persist-credentials: false
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+      - name: Generate map section using existing public forecast data
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l kanto-src/scripts/build_pages_site.php
+          mkdir -p "$RUNNER_TEMP/kanto-data" "$RUNNER_TEMP/expected"
+          for id in kugenuma yuigahama oarai_onuki kashima_hirai katakai ichinomiya taito onjuku kamogawa_maruki; do
+            curl -4 -fsSL --retry 3 --retry-delay 2 --max-time 30 "$PUBLIC_URL/data/$id.json" -o "$RUNNER_TEMP/kanto-data/$id.json"
+          done
+          php kanto-src/scripts/build_pages_site.php --public-dir="$RUNNER_TEMP/kanto-data" --output-dir="$RUNNER_TEMP/built"
+          cp "$RUNNER_TEMP/built/spots/kugenuma/index.html" "$RUNNER_TEMP/expected/kugenuma.html"
+          python3 - <<'PY'
+          import os,pathlib,re
+          p=pathlib.Path(os.environ['RUNNER_TEMP'])/'expected/kugenuma.html'
+          html=p.read_bytes()
+          pattern=rb'<section class="forecast-section kugenuma-access-map"[^>]*>.*?</section>'
+          matches=re.findall(pattern,html,re.S)
+          assert len(matches)==1
+          m=matches[0]
+          assert b'class="kugenuma-access-map__card"' in m
+          assert b'class="kugenuma-access-map__details"' in m
+          assert b'class="kugenuma-access-map__link"' in m
+          assert b'output=embed' in m and b'loading="eager"' in m
+          assert m.index(b'kugenuma-access-map__destination')<m.index(b'kugenuma-access-map__link')<m.index(b'<iframe')
+          assert html.index(b'id="daily-forecast"')<html.index(b'id="kugenuma-access-map"')<html.index(b'</main>')
+          print('PASS: source map is integrated and placed before footer')
+          PY
+      - name: Install existing FTPS client
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Read and backup current Kugenuma production HTML
+        id: backup
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          get /kanto/spots/kugenuma/index.html -o "$RUNNER_TEMP/old-index.html"
+          bye
+          EOF
+          curl -4 -fsSL --retry 3 --max-time 30 -H 'Cache-Control: no-cache' "$PUBLIC_URL/spots/kugenuma/?integrated_preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-before.html"
+          cmp "$RUNNER_TEMP/old-index.html" "$RUNNER_TEMP/live-before.html"
+          grep -q 'data-forecast' "$RUNNER_TEMP/old-index.html"
+      - name: Replace only map section and preserve research articles
+        id: stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,pathlib,re
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          before=(root/'old-index.html').read_bytes()
+          generated=(root/'expected/kugenuma.html').read_bytes()
+          p=re.compile(rb'<section class="forecast-section kugenuma-access-map"[^>]*>.*?</section>',re.S)
+          old=p.findall(before)
+          new=p.findall(generated)
+          if len(old)!=1 or len(new)!=1: raise RuntimeError('Unexpected map section count')
+          if b'kugenuma-access-map__card' in old[0]: raise RuntimeError('Integrated layout already published; refusing redundant change')
+          if b'class="kugenuma-access-map__link"' not in old[0] or b'class="kugenuma-access-map__link"' not in new[0]:
+              raise RuntimeError('Map link not found')
+          old_href=re.search(rb'class="kugenuma-access-map__link" href="([^"]+)"',old[0])
+          new_href=re.search(rb'class="kugenuma-access-map__link" href="([^"]+)"',new[0])
+          old_iframe=re.search(rb'<iframe[^>]+src="([^"]+)"',old[0])
+          new_iframe=re.search(rb'<iframe[^>]+src="([^"]+)"',new[0])
+          if not old_href or not new_href or old_href.group(1)!=new_href.group(1): raise RuntimeError('Google directions target changed')
+          if not old_iframe or not new_iframe or old_iframe.group(1)!=new_iframe.group(1): raise RuntimeError('Google map source changed')
+          updated=before.replace(old[0],new[0],1)
+          if updated.replace(new[0],old[0],1)!=before:
+              raise RuntimeError('Unexpected change outside map section')
+          if not (updated.index(b'id="daily-forecast"')<updated.index(b'id="kugenuma-access-map"')<updated.index(b'</main>')):
+              raise RuntimeError('Map before footer required')
+          if updated.count(b'<h1')!=before.count(b'<h1') or updated.count(b'data-forecast')!=before.count(b'data-forecast'):
+              raise RuntimeError('Heading or forecast marker changed')
+          (root/'new-index.html').write_bytes(updated)
+          print('PASS: integrated map replacement, all other live HTML bytes preserved')
+          PY
+          curl -4 -fsSL --retry 3 --max-time 30 -H 'Cache-Control: no-cache' "$PUBLIC_URL/spots/kugenuma/?integrated_recheck=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-recheck.html"
+          cmp "$RUNNER_TEMP/old-index.html" "$RUNNER_TEMP/live-recheck.html"
+      - name: Upload only Kugenuma HTML
+        id: upload
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          put "$RUNNER_TEMP/new-index.html" -o /kanto/spots/kugenuma/index.html
+          bye
+          EOF
+      - name: Verify published HTML byte for byte
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -4 -fsSL --retry 3 --max-time 30 -H 'Cache-Control: no-cache' "$PUBLIC_URL/spots/kugenuma/?integrated_verify=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/live-after.html"
+          cmp "$RUNNER_TEMP/new-index.html" "$RUNNER_TEMP/live-after.html"
+          grep -q 'kugenuma-access-map__card' "$RUNNER_TEMP/live-after.html"
+          grep -q 'loading="eager"' "$RUNNER_TEMP/live-after.html"
+          echo 'PASS: production Kugenuma map, destination and Google Maps button are in one card.'
+      - name: Restore previous Kugenuma HTML on publish failure
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          put "$RUNNER_TEMP/old-index.html" -o /kanto/spots/kugenuma/index.html
+          bye
+          EOF
+          echo 'PASS: prior Kugenuma HTML restored'

@@ -86,7 +86,34 @@ jobs:
               if (backup/rel).read_bytes()!=(public/rel).read_bytes():
                   raise RuntimeError('Production drift, refusing to overwrite: '+rel)
 
-          for rel in files: (stage/rel).write_bytes((backup/rel).read_bytes())
+          # Match only the two legacy Kugenuma sections, not adjacent forecast sections.
+          def migrate_kugenuma(raw):
+              map_pattern=rb'<section class="forecast-section kugenuma-access-map"[^>]*>.*?</section>'
+              article_pattern=rb'<section class="forecast-section" aria-labelledby="ks-article-title">.*?</section>'
+              maps=list(re.finditer(map_pattern,raw,re.S))
+              if len(maps)!=1: raise RuntimeError('Unexpected Kugenuma map count')
+              old_articles=list(re.finditer(article_pattern,raw,re.S))
+              if len(old_articles)>1: raise RuntimeError('Duplicate legacy article')
+              if old_articles and b'ks-gpt-article' not in old_articles[0].group(): raise RuntimeError('Unexpected legacy article')
+              result=re.sub(article_pattern,b'',raw,flags=re.S)
+              map_match=re.search(map_pattern,result,re.S)
+              section=map_match.group()
+              result=result[:map_match.start()]+result[map_match.end():]
+              if result.count(b'</main>')!=1: raise RuntimeError('Unexpected Kugenuma main')
+              return result.replace(b'</main>',section+b'\n  </main>',1)
+          expected={}
+          for rel in files:
+              raw=(backup/rel).read_bytes()
+              if rel=='spots/kugenuma/index.html':
+                  # Once moved, retain exact bytes on every subsequent update.
+                  map_pos=raw.find(b'id="kugenuma-access-map"')
+                  daily_pos=raw.find(b'id="daily-forecast"')
+                  if b'aria-labelledby="ks-article-title"' in raw or map_pos<daily_pos:
+                      raw=migrate_kugenuma(raw)
+                  if not (raw.find(b'id="daily-forecast"')<raw.find(b'id="kugenuma-access-map"')<raw.find(b'</main>')):
+                      raise RuntimeError('Kugenuma map position not verified')
+              expected[rel]=raw
+              (stage/rel).write_bytes(raw)
           proc=subprocess.run(['node',str(base/'scripts/render_research_v2.cjs'),
                     '--root',str(stage),'--research-dir',str(base/'content/research'),
                     '--config',str(base/'config/representative-spots.json')],capture_output=True,text=True)
@@ -98,7 +125,7 @@ jobs:
           for rel in files:
               old=(backup/rel).read_bytes()
               new=(stage/rel).read_bytes()
-              if marker.sub(b'',old)!=marker.sub(b'',new):
+              if marker.sub(b'',expected[rel])!=marker.sub(b'',new):
                   raise RuntimeError('Unsafe change outside article/ranking markers: '+rel)
               if b'data-forecast' not in new or b'</main>' not in new:
                   raise RuntimeError('Lost existing forecast content: '+rel)

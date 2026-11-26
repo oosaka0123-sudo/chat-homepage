@@ -1,0 +1,173 @@
+name: One-off Kanto Yuigahama pilot safe Lolipop release
+on:
+  push:
+    branches: [ops/kanto-yuigahama-pilot-20261126]
+    paths: ['.github/workflows/kanto-yuigahama-pilot-oneoff.yml']
+permissions:
+  contents: read
+concurrency:
+  group: kanto-best9-lolipop-production
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ORIGIN_URL: https://kanto.rss7.net
+    steps:
+      - name: Checkout pinned Kanto source
+        uses: actions/checkout@v4
+        with:
+          repository: oosaka0123-sudo/kanto-surfer-ks
+          ref: a49f3fd80a539234cecb7e1725190d5da0f7f6be
+          path: kanto-src
+          persist-credentials: false
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: curl, openssl
+          coverage: none
+      - name: Build current forecast and exactly one changed spot
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l kanto-src/scripts/build_pages_site.php
+          php -l kanto-src/scripts/build_public_forecast.php
+          php -l kanto-src/scripts/fetch_open_meteo.php
+          node --check kanto-src/prototype/spot-forecast/app.js
+          php kanto-src/scripts/fetch_open_meteo.php --output-dir="$RUNNER_TEMP/raw"
+          php kanto-src/scripts/normalize_open_meteo.php --input="$RUNNER_TEMP/raw/latest.json" --output-dir="$RUNNER_TEMP/normal"
+          php kanto-src/scripts/build_public_forecast.php --input="$RUNNER_TEMP/normal/latest.json" --output-dir="$RUNNER_TEMP/public" --validation-dir="kanto-src/data/validation"
+          node kanto-src/tests/kugenuma_hourly_smoke.cjs "$RUNNER_TEMP/public"
+          php kanto-src/scripts/build_pages_site.php --public-dir="$RUNNER_TEMP/public" --output-dir="$RUNNER_TEMP/built"
+          mkdir -p "$RUNNER_TEMP/stage/spots/yuigahama" "$RUNNER_TEMP/stage/data" "$RUNNER_TEMP/backup"
+          cp "$RUNNER_TEMP/built/spots/yuigahama/index.html" "$RUNNER_TEMP/stage/spots/yuigahama/index.html"
+          cp "$RUNNER_TEMP/built/app.js" "$RUNNER_TEMP/stage/app.js"
+          cp "$RUNNER_TEMP/built/data/yuigahama.json" "$RUNNER_TEMP/stage/data/yuigahama.json"
+          jq -e '.spot.id=="yuigahama" and .tide.station_id=="D8" and ([.hourly[].precipitation_probability_pct | select(.!=null)] | length)>0 and ([.hourly[].precipitation_1h_mm | select(.!=null)] | length)>0' "$RUNNER_TEMP/stage/data/yuigahama.json" >/dev/null
+          grep -q 'data-spot-advice' "$RUNNER_TEMP/stage/spots/yuigahama/index.html"
+          grep -q 'YUIGAHAMA_GOOGLE_MAP_START' "$RUNNER_TEMP/stage/spots/yuigahama/index.html"
+          grep -q 'YUIGAHAMA_WINDY_START' "$RUNNER_TEMP/stage/spots/yuigahama/index.html"
+          ! grep -q 'kugenuma-hero-muted.mp4' "$RUNNER_TEMP/stage/spots/yuigahama/index.html"
+      - name: Install existing FTPS client
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Safely back up exactly three original production files
+        id: backup
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          test -n "$FTP_USER" && test -n "$FTP_PASSWORD"
+          mkdir -p "$RUNNER_TEMP/backup/data" "$RUNNER_TEMP/backup/spots/yuigahama"
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          get /kanto/app.js -o "$RUNNER_TEMP/backup/app.js"
+          get /kanto/data/yuigahama.json -o "$RUNNER_TEMP/backup/data/yuigahama.json"
+          get /kanto/spots/yuigahama/index.html -o "$RUNNER_TEMP/backup/spots/yuigahama/index.html"
+          bye
+          EOF
+          for rel in app.js data/yuigahama.json spots/yuigahama/index.html; do
+            test -s "$RUNNER_TEMP/backup/$rel"
+            curl -4 -fsSL --retry 3 --max-time 30 -H 'Cache-Control: no-cache' "$ORIGIN_URL/$rel?pilot_preflight=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/current.bin"
+            cmp "$RUNNER_TEMP/current.bin" "$RUNNER_TEMP/backup/$rel"
+          done
+      - name: Preserve published research article and verify page structure
+        id: stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os,pathlib,re
+          root=pathlib.Path(os.environ['RUNNER_TEMP'])
+          before=(root/'backup/spots/yuigahama/index.html').read_bytes()
+          p=root/'stage/spots/yuigahama/index.html'
+          after=p.read_bytes()
+          marker=re.compile(rb'<!-- KS-RESEARCH:yuigahama:START -->.*?<!-- KS-RESEARCH:yuigahama:END -->',re.S)
+          original=marker.findall(before)
+          if len(original)!=1: raise RuntimeError('Existing Yuigahama research marker missing or duplicated')
+          if marker.search(after): raise RuntimeError('Generated HTML must not contain stale research')
+          at=after.find(b'<section class="forecast-section"')
+          if at<0: raise RuntimeError('Camera section insertion point missing')
+          # Existing research renderer inserts before first forecast-section, including inside the hero.
+          after=after[:at]+original[0]+after[at:]
+          if marker.findall(after)!=original: raise RuntimeError('Research article changed')
+          if after.count(b'<h1')!=1 or after.count(b'data-forecast')<1: raise RuntimeError('Missing hero or forecast')
+          if not(after.index(b'id="yuigahama-windy"')<after.index(b'id="yuigahama-access-map"')<after.index(b'</main>')):
+              raise RuntimeError('Windy / map placement mismatch')
+          if b'kugenuma-hero-muted.mp4' in after or b'35.3148611' in after: raise RuntimeError('Kugenuma media/location leak')
+          if b'data-default-spot="yuigahama"' not in after: raise RuntimeError('Spot identity mismatch')
+          p.write_bytes(after)
+          print('PASS: one spot page and existing research safely composed')
+          PY
+          for rel in app.js data/yuigahama.json spots/yuigahama/index.html; do
+            curl -4 -fsSL --retry 3 --max-time 30 -H 'Cache-Control: no-cache' "$ORIGIN_URL/$rel?pilot_recheck=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/recheck.bin"
+            cmp "$RUNNER_TEMP/recheck.bin" "$RUNNER_TEMP/backup/$rel"
+          done
+      - name: Upload only Yuigahama HTML, JSON, and compatible shared JS
+        id: upload
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          put "$RUNNER_TEMP/stage/data/yuigahama.json" -o /kanto/data/yuigahama.json
+          put "$RUNNER_TEMP/stage/app.js" -o /kanto/app.js
+          put "$RUNNER_TEMP/stage/spots/yuigahama/index.html" -o /kanto/spots/yuigahama/index.html
+          bye
+          EOF
+      - name: Verify all three public files match byte-for-byte
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          for rel in data/yuigahama.json app.js spots/yuigahama/index.html; do
+            curl -4 -fsSL --retry 3 --max-time 30 -H 'Cache-Control: no-cache' "$ORIGIN_URL/$rel?pilot_verify=$GITHUB_RUN_ID" -o "$RUNNER_TEMP/public-verify.bin"
+            cmp "$RUNNER_TEMP/stage/$rel" "$RUNNER_TEMP/public-verify.bin"
+          done
+          echo 'PASS Yuigahama pilot: exact production HTML/JSON/JS match; other 8 pages not uploaded'
+      - name: Roll back all three backed-up files on upload or verification failure
+        if: failure() && steps.backup.outcome == 'success' && (steps.upload.outcome == 'failure' || steps.verify.outcome == 'failure')
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          lftp <<EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 3
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          put "$RUNNER_TEMP/backup/data/yuigahama.json" -o /kanto/data/yuigahama.json
+          put "$RUNNER_TEMP/backup/app.js" -o /kanto/app.js
+          put "$RUNNER_TEMP/backup/spots/yuigahama/index.html" -o /kanto/spots/yuigahama/index.html
+          bye
+          EOF
+          echo 'ROLLBACK: Yuigahama data / app / HTML restored'

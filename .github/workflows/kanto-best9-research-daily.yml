@@ -89,7 +89,7 @@ jobs:
               if (data.get('spot', {}).get('id') != spot or not isinstance(hourly, list)
                       or not hourly or not isinstance(rows, list) or len(rows) != 10):
                   return False
-              if not any(isinstance(h, dict)
+              if not all(isinstance(h, dict)
                          and number(h.get('wave_height_m', h.get('model_wave_height_m')))
                          and number(h.get('wind_speed_ms')) for h in hourly):
                   return False
@@ -135,6 +135,7 @@ jobs:
                          'model_wave_height_min_m': 0.4, 'model_wave_height_max_m': 0.6,
                          'wind_speed_mean_ms': 2} for i in range(10)]}}
           assert not payload_ok('kugenuma', {**sample, 'hourly': [{}]})
+          assert not payload_ok('kugenuma', {**sample, 'hourly': sample['hourly'] + [{}]})
           assert not payload_ok('kugenuma', {**sample, 'daily': {'rows': [{}] * 10}})
           assert payload_ok('kugenuma', sample)
           last_missing = {**sample['daily']['rows'][-1], 'model_wave_height_min_m': None, 'model_wave_height_max_m': None}

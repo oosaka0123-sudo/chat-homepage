@@ -1,0 +1,61 @@
+name: Inspect Kansai contact backend metadata only
+on:
+  push:
+    branches: [ops/kanto-contact-kansai-probe-20261127]
+permissions:
+  contents: read
+concurrency:
+  group: kanto-best9-lolipop-production
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Install encrypted FTP and PHP
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp php-cli
+      - name: Inspect only structure without printing file or credentials
+        shell: bash
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          mkdir -p "$RUNNER_TEMP/secure"
+          chmod 700 "$RUNNER_TEMP/secure"
+          lftp <<LFTP_EOF
+          set cmd:fail-exit true
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate true
+          set ftp:passive-mode true
+          set net:timeout 20
+          set net:max-retries 2
+          open -u "$FTP_USER","$FTP_PASSWORD" ftp.lolipop.jp
+          get "/kansai/contact.php" -o "$RUNNER_TEMP/secure/contact.php"
+          bye
+          LFTP_EOF
+          php -l "$RUNNER_TEMP/secure/contact.php" >/dev/null
+          python3 - <<'PY'
+          import os,re
+          p=os.environ['RUNNER_TEMP']+'/secure/contact.php'
+          s=open(p,encoding='utf-8',errors='replace').read()
+          print('BACKEND_EXISTS',True,'BYTES',len(s))
+          for name,pattern in [
+            ('PHP_MAIL',r'\bmail\s*\('),
+            ('PHP_MB_SEND_MAIL',r'\bmb_send_mail\s*\('),
+            ('PHP_SMTP',r'PHPMailer|\bSMTP\b|smtp\.'),
+            ('POST_FIELDS',r'\$_POST\s*\[\s*[\x27\x22]([a-z0-9_]+)'),
+            ('FROM_LITERAL',r'From\s*:'),
+            ('SECURITY_HEADERS',r'X-Content-Type-Options|Content-Type: application/json'),
+            ('HP',r'honeypot|website'),
+            ('CAPTCHA',r'captcha_answer|captcha'),
+          ]:
+            matches=re.findall(pattern,s,re.I)
+            print(name,sorted(set(matches)) if name=='POST_FIELDS' else bool(matches))
+          emails=re.findall(r'(?i)[a-z0-9._%+-]+@([a-z0-9-]+(?:\.[a-z0-9-]+)+)',s)
+          print('EMAIL_DOMAINS',sorted(set(emails)))
+          print('POSSIBLE_TO_VARIABLES',sorted(set(re.findall(r'\$([a-zA-Z_]*(?:to|recipient|admin|mail|email)[a-zA-Z_]*)',s,re.I)))[:35])
+          PY
+          rm -f "$RUNNER_TEMP/secure/contact.php"

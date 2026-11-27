@@ -1,0 +1,37 @@
+name: One-off Kanto contact thank-you page deploy
+on:
+  push:
+    branches: [ops/kanto-contact-thanks-release-20261127]
+    paths:
+      - '.github/workflows/kanto-contact-thanks-oneoff-20261127.yml'
+      - '.github/scripts/kanto_thanks_release.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: kanto-best9-lolipop-production
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout non-destructive release script
+        uses: actions/checkout@v4
+      - name: Validate both deploy scripts
+        run: |
+          python3 -m py_compile .github/scripts/kanto_model_sync.py
+          python3 -m py_compile .github/scripts/kanto_thanks_release.py
+      - name: Install FTPS client
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Back up and publish only contact HTML and new thank-you HTML
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          python3 .github/scripts/kanto_thanks_release.py

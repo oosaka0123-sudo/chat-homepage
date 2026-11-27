@@ -11,7 +11,7 @@ SLUGS=['kugenuma','yuigahama','oarai-onuki','kashima-hirai','katakai','ichinomiy
 PAGES=['index.html']+['spots/'+s+'/index.html' for s in SLUGS]+['about/index.html','contact/index.html','privacy/index.html']
 FILES=PAGES+['styles.css']
 URL_IG=b'https://www.instagram.com/kanto_surfer_ks/'
-URL_FB=b'https://www.facebook.com/kansaisurfer/'
+URL_FB=b'https://www.facebook.com/profile.php?id=61595144364123'
 CSS_MARK=b'/* Kanto SNS icons mirror Kansai Surfer:'
 CSS_QUERY=re.compile(rb'(styles\.css\?v=)[a-f0-9]{12}')
 SNS_NAVS=re.compile(rb'<nav class="(?:sns-buttons|footer-sns)"[^>]*>.*?</nav>',re.S)

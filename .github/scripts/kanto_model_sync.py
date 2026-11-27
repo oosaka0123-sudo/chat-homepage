@@ -47,10 +47,21 @@ def api(route):
 
 def selected_build():
     latest=api('commits/main')['sha']
-    runs=api('actions/workflows/deploy-pages.yml/runs?branch=main&per_page=30')['workflow_runs']
+    tree=api('git/commits/'+latest)['tree']['sha']
+    runs=api('actions/workflows/deploy-pages.yml/runs?per_page=30')['workflow_runs']
+    valid=[]
     for r in runs:
         started=dt.datetime.fromisoformat(r['created_at'].replace('Z','+00:00'))
-        if r['conclusion']=='success' and r['head_branch']=='main' and r['head_sha']==latest and r['event']!='pull_request' and dt.timedelta(0)<=NOW-started<dt.timedelta(hours=5):
+        if r['conclusion']=='success' and dt.timedelta(0)<=NOW-started<dt.timedelta(hours=5):
+            valid.append(r)
+    for r in valid:
+        if r['head_sha']==latest and r['head_branch']=='main' and r['event']!='pull_request':
+            return r
+    # A verified PR Pages artifact may be used only if its git tree is byte-identical
+    # to the current main tree. This survives a slow Open-Meteo build after a merge.
+    for r in valid:
+        if r['event']=='pull_request' and api('git/commits/'+r['head_sha'])['tree']['sha']==tree:
+            print('SOURCE FALLBACK: exact same Git tree as current main; PR build independently verified')
             return r
     return None
 

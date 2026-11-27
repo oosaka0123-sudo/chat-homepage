@@ -94,11 +94,17 @@ jobs:
                          and number(h.get('wind_speed_ms')) for h in hourly):
                   return False
               dates = []
-              for row in rows:
+              for i, row in enumerate(rows):
                   if (not isinstance(row, dict)
-                          or not all(number(row.get(k)) for k in ('model_wave_height_min_m', 'model_wave_height_max_m', 'wind_speed_mean_ms'))
-                          or row['model_wave_height_min_m'] > row['model_wave_height_max_m']):
+                          or not all(k in row for k in ('model_wave_height_min_m', 'model_wave_height_max_m', 'wind_speed_mean_ms'))
+                          or not number(row['wind_speed_mean_ms'])):
                       return False
+                  lo, hi = row['model_wave_height_min_m'], row['model_wave_height_max_m']
+                  # Marine's coverage can end on day 9 while weather covers day 10.
+                  # Allow an explicit missing wave pair only on the last date, never fabricate it.
+                  if not (i == 9 and lo is None and hi is None):
+                      if not (number(lo) and number(hi) and lo <= hi):
+                          return False
                   try:
                       dates.append(datetime.date.fromisoformat(row['date']))
                   except (KeyError, TypeError, ValueError):
@@ -131,6 +137,10 @@ jobs:
           assert not payload_ok('kugenuma', {**sample, 'hourly': [{}]})
           assert not payload_ok('kugenuma', {**sample, 'daily': {'rows': [{}] * 10}})
           assert payload_ok('kugenuma', sample)
+          last_missing = {**sample['daily']['rows'][-1], 'model_wave_height_min_m': None, 'model_wave_height_max_m': None}
+          assert payload_ok('kugenuma', {**sample, 'daily': {'rows': sample['daily']['rows'][:-1] + [last_missing]}})
+          first_missing = {**sample['daily']['rows'][0], 'model_wave_height_min_m': None, 'model_wave_height_max_m': None}
+          assert not payload_ok('kugenuma', {**sample, 'daily': {'rows': [first_missing] + sample['daily']['rows'][1:]}})
           assert not payload_ok('yuigahama', sample)
           assert not payload_ok('kugenuma', {**sample, 'hourly': []})
           assert not payload_ok('kugenuma', {**sample, 'daily': {'rows': []}})

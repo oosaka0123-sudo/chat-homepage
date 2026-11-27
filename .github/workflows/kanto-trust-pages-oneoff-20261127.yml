@@ -1,0 +1,44 @@
+name: One-off Kanto trust pages (about, privacy, contact)
+
+on:
+  push:
+    branches: [ops/kanto-trust-pages-release-20261127]
+    paths:
+      - '.github/workflows/kanto-trust-pages-oneoff-20261127.yml'
+      - '.github/scripts/kanto_trust_pages_release.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: kanto-best9-lolipop-production
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout verified release procedure
+        uses: actions/checkout@v4
+
+      - name: Validate Python scripts
+        run: |
+          python3 -m py_compile .github/scripts/kanto_model_sync.py
+          python3 -m py_compile .github/scripts/kanto_trust_pages_release.py
+
+      - name: Install encrypted FTP client
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+
+      - name: Publish only three Kanto information pages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          python3 .github/scripts/kanto_trust_pages_release.py

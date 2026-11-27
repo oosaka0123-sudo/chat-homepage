@@ -46,10 +46,11 @@ def api(route):
     return json.loads(request('https://api.github.com/repos/'+REPO+'/'+route,auth=True))
 
 def selected_build():
+    latest=api('commits/main')['sha']
     runs=api('actions/workflows/deploy-pages.yml/runs?branch=main&per_page=30')['workflow_runs']
     for r in runs:
         started=dt.datetime.fromisoformat(r['created_at'].replace('Z','+00:00'))
-        if r['conclusion']=='success' and r['head_branch']=='main' and r['event']!='pull_request' and dt.timedelta(0)<=NOW-started<dt.timedelta(hours=5):
+        if r['conclusion']=='success' and r['head_branch']=='main' and r['head_sha']==latest and r['event']!='pull_request' and dt.timedelta(0)<=NOW-started<dt.timedelta(hours=5):
             return r
     return None
 
@@ -58,8 +59,12 @@ def source_artifact(r):
     items=[x for x in items if x['name']=='github-pages' and not x['expired']]
     if not items: raise RuntimeError('Pages artifact unavailable')
     url=f'https://api.github.com/repos/{REPO}/actions/artifacts/{items[0]["id"]}/zip'
-    blob=request(url,auth=True)
-    with zipfile.ZipFile(io.BytesIO(blob)) as z:
+    # curl intentionally strips GitHub Authorization on redirects to Azure artifact storage.
+    dl=subprocess.run(['curl','-fsSL','--retry','3','--max-time','90','-H',
+         'Authorization: Bearer '+TOKEN,'-H','Accept: application/vnd.github+json',url],
+         capture_output=True,timeout=120)
+    if dl.returncode:raise RuntimeError('Pages artifact download failed (curl exit '+str(dl.returncode)+')')
+    with zipfile.ZipFile(io.BytesIO(dl.stdout)) as z:
         tar_data=z.read('artifact.tar')
     return tarfile.open(fileobj=io.BytesIO(tar_data),mode='r:*')
 

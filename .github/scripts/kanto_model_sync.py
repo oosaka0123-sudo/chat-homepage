@@ -100,6 +100,9 @@ def ensure_valid(source):
         for e in d['entries']:
             if not 90<=len(e['home'])<=120 or not 90<=len(e['detail'])<=120:
                 raise RuntimeError('Short article character count invalid '+e['id'])
+            surf=e.get('surf_size',{})
+            if surf.get('status')!='experimental' or not surf.get('label') or surf.get('confidence')!='low':
+                raise RuntimeError('Surf-size prediction missing its experimental label for '+e['id'])
     for id in IDS:
         d=json.loads(source[f'data/{id}.json'].decode('utf-8'))
         if d['spot']['id']!=id or d['generated_at']!=model['generated_at'] or d['daily']['rows'][0]['date']!=today.isoformat() or len(d['daily']['rows'])!=10:
@@ -107,8 +110,13 @@ def ensure_valid(source):
     json.loads(source['data/index.json'].decode('utf-8'))
     for rel,id in PAGES:
         p=marker_pattern(id)
-        if len(p.findall(source[rel]))!=1 or b'data-forecast' not in source[rel]:
+        if len(p.findall(source[rel]))!=1:
             raise RuntimeError('Pages model marker missing: '+rel)
+        if rel=='index.html':
+            if any(token in source[rel] for token in (b'data-forecast',b'id="forecast-title"',b'id="daily-forecast"')):
+                raise RuntimeError('Homepage must not contain default Kugenuma chart and 10-day table')
+        elif b'data-forecast' not in source[rel] or b'id="daily-forecast"' not in source[rel]:
+            raise RuntimeError('Individual spot must retain graph and 10-day table: '+rel)
     print('PASS: 9 model spots x 2 dates, 100-char articles, ten HTML, ten JSON, fresh source '+generated.isoformat())
 
 def marker_pattern(id):
@@ -135,23 +143,43 @@ def guarded_sync(source,tmp):
     if any(not (backup/p).is_file() for p in FILES):raise RuntimeError('Incomplete backup; production untouched')
     for rel,id in PAGES:
         old=(backup/rel).read_bytes()
+        preserved=old
+        if rel=='index.html':
+            # One-time removal of legacy Kugenuma chart + ten-day block from homepage.
+            # The old page contains no other content between forecast-title and </main>.
+            begin=b'<section class="forecast-section" aria-labelledby="forecast-title">'
+            if begin in old:
+                if old.count(begin)!=1:raise RuntimeError('Duplicate homepage chart anchor')
+                start=old.index(begin)
+                end=old.find(b'</main>',start)
+                if end<0:raise RuntimeError('Homepage closing main anchor missing')
+                removed=old[start:end]
+                if not all(tag in removed for tag in [b'id="daily-forecast"',b'data-forecast',b'id="forecast-title"']):
+                    raise RuntimeError('Unexpected legacy section: not safe to delete')
+                if b'KS-RESEARCH:' in removed or b'KS-MODEL:' in removed or b'<footer' in removed:
+                    raise RuntimeError('Other homepage content inside old chart range; refusing removal')
+                preserved=old[:start]+old[end:]
+            if any(x in preserved for x in [b'data-forecast',b'id="daily-forecast"',b'id="forecast-title"']):
+                raise RuntimeError('Unexpected extra homepage chart markup')
         new_model=marker_pattern(id).search(source[rel]).group()
         pat=marker_pattern(id)
-        current=list(pat.finditer(old))
+        current=list(pat.finditer(preserved))
         if len(current)>1:raise RuntimeError('Production duplicate model marker '+rel)
         if current:
             m=current[0]
-            new=old[:m.start()]+new_model+old[m.end():]
+            new=preserved[:m.start()]+new_model+preserved[m.end():]
         else:
             anchor=b'<!-- KS-RESEARCH:'+id.encode()+b':START -->'
-            at=old.find(anchor)
-            if at<0:at=old.find(b'<section class="forecast-section"')
+            at=preserved.find(anchor)
+            if at<0:at=preserved.find(b'</main>') if rel=='index.html' else preserved.find(b'<section class="forecast-section"')
             if at<0:raise RuntimeError('No safe insertion point '+rel)
-            new=old[:at]+new_model+old[at:]
-        if pat.sub(b'',new)!=pat.sub(b'',old) or len(pat.findall(new))!=1:
+            new=preserved[:at]+new_model+preserved[at:]
+        if pat.sub(b'',new)!=pat.sub(b'',preserved) or len(pat.findall(new))!=1:
             raise RuntimeError('Change outside model article section '+rel)
-        if b'data-forecast' not in new or b'</main>' not in new:
-            raise RuntimeError('Original forecast HTML lost '+rel)
+        if b'</main>' not in new or (rel!='index.html' and b'data-forecast' not in new):
+            raise RuntimeError('Required forecast markup lost '+rel)
+        if rel=='index.html' and (b'data-forecast' in new or b'id="daily-forecast"' in new):
+            raise RuntimeError('Home chart not removed')
         (stage/rel).write_bytes(new)
     for rel in DATA:(stage/rel).write_bytes(source[rel])
     if len([p for p in stage.rglob('*') if p.is_file()])!=20:

@@ -1,0 +1,37 @@
+name: One-off Kanto real contact form and PHP email backend
+on:
+  push:
+    branches: [ops/kanto-contact-backend-release-20261127]
+    paths:
+      - '.github/scripts/kanto_contact_release.py'
+      - '.github/workflows/kanto-contact-oneoff-20261127.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: kanto-best9-lolipop-production
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout protected deployment scripts
+        uses: actions/checkout@v4
+      - name: Validate script syntax
+        run: |
+          python3 -m py_compile .github/scripts/kanto_model_sync.py
+          python3 -m py_compile .github/scripts/kanto_contact_release.py
+      - name: Install FTPS and PHP
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp php-cli php-mbstring
+      - name: Backup, install Kanto contact form and verify actual mail submission
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          python3 .github/scripts/kanto_contact_release.py

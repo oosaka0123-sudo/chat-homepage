@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           set +x
           python3 - <<'PY'
-          import datetime, json, os, pathlib, re, subprocess, sys, tempfile
+          import datetime, json, math, os, pathlib, re, subprocess, sys, tempfile
           from zoneinfo import ZoneInfo
 
           now=datetime.datetime.now(ZoneInfo('Asia/Tokyo'))
@@ -82,11 +82,28 @@ jobs:
           # The actual forecast rows and graph are rendered by app.js from data/*.json.
           # Verify the live payload separately; do not demand static rows in HTML.
           def payload_ok(spot, data):
-              return (data.get('spot', {}).get('id') == spot
-                      and isinstance(data.get('hourly'), list)
-                      and bool(data['hourly'])
-                      and isinstance(data.get('daily', {}).get('rows'), list)
-                      and len(data['daily']['rows']) == 10)
+              def number(v):
+                  return type(v) in (int, float) and math.isfinite(v) and v >= 0
+              hourly = data.get('hourly')
+              rows = data.get('daily', {}).get('rows')
+              if (data.get('spot', {}).get('id') != spot or not isinstance(hourly, list)
+                      or not hourly or not isinstance(rows, list) or len(rows) != 10):
+                  return False
+              if not any(isinstance(h, dict)
+                         and number(h.get('wave_height_m', h.get('model_wave_height_m')))
+                         and number(h.get('wind_speed_ms')) for h in hourly):
+                  return False
+              dates = []
+              for row in rows:
+                  if (not isinstance(row, dict)
+                          or not all(number(row.get(k)) for k in ('model_wave_height_min_m', 'model_wave_height_max_m', 'wind_speed_mean_ms'))
+                          or row['model_wave_height_min_m'] > row['model_wave_height_max_m']):
+                      return False
+                  try:
+                      dates.append(datetime.date.fromisoformat(row['date']))
+                  except (KeyError, TypeError, ValueError):
+                      return False
+              return all(b - a == datetime.timedelta(days=1) for a, b in zip(dates, dates[1:]))
 
           # Regression checks before any network or FTPS writes.
           home = b'<!-- KS-MODEL:ranking:START --><!-- KS-MODEL:ranking:END --></main>'
@@ -105,7 +122,14 @@ jobs:
           assert not page_shape_ok('spots/kugenuma/index.html', detail.replace(b'data-chart', b''))
           assert not page_shape_ok('spots/kugenuma/index.html', detail.replace(b'data-daily-body', b''))
           assert not page_shape_ok('spots/kugenuma/index.html', detail.replace(b'kugenuma', b'yuigahama'))
-          sample = {'spot': {'id': 'kugenuma'}, 'hourly': [{}], 'daily': {'rows': [{}] * 10}}
+          sample = {'spot': {'id': 'kugenuma'},
+                    'hourly': [{'wave_height_m': 0.5, 'wind_speed_ms': 2}],
+                    'daily': {'rows': [
+                        {'date': (datetime.date(2026, 1, 1) + datetime.timedelta(days=i)).isoformat(),
+                         'model_wave_height_min_m': 0.4, 'model_wave_height_max_m': 0.6,
+                         'wind_speed_mean_ms': 2} for i in range(10)]}}
+          assert not payload_ok('kugenuma', {**sample, 'hourly': [{}]})
+          assert not payload_ok('kugenuma', {**sample, 'daily': {'rows': [{}] * 10}})
           assert payload_ok('kugenuma', sample)
           assert not payload_ok('yuigahama', sample)
           assert not payload_ok('kugenuma', {**sample, 'hourly': []})

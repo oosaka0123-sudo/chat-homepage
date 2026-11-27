@@ -1,0 +1,40 @@
+name: Kanto BEST9 100-char articles and model JSON to Lolipop
+
+on:
+  push:
+    branches: [ops/kanto-v3-model-auto-sync-20261127]
+    paths:
+      - '.github/workflows/kanto-model-ranking-lolipop.yml'
+      - '.github/scripts/kanto_model_sync.py'
+  schedule:
+    - cron: '43 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+# Existing Kanto research publisher uses this same lock. Never race on the ten HTML files.
+concurrency:
+  group: kanto-best9-lolipop-production
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout sync script
+        uses: actions/checkout@v4
+      - name: Install FTPS client
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Download the latest validated Kanto Pages artifact and safely synchronize
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          python3 .github/scripts/kanto_model_sync.py

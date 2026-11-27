@@ -62,13 +62,37 @@ jobs:
           for d in (public,backup,stage):
               for rel in files: (d/rel).parent.mkdir(parents=True,exist_ok=True)
 
+          def page_shape_ok(rel, content):
+              if content.count(b'</main>') != 1:
+                  return False
+              if rel == 'index.html':
+                  start = b'<!-- KS-MODEL:ranking:START -->'
+                  end = b'<!-- KS-MODEL:ranking:END -->'
+                  return (content.count(start) == content.count(end) == 1
+                          and content.index(start) < content.index(end) < content.index(b'</main>')
+                          and not any(x in content for x in (b'data-forecast', b'id="forecast-title"', b'id="daily-forecast"')))
+              return b'data-forecast' in content and b'id="daily-forecast"' in content
+
+          # Regression checks before any network or FTPS writes.
+          home = b'<!-- KS-MODEL:ranking:START --><!-- KS-MODEL:ranking:END --></main>'
+          detail = b'<div data-forecast></div><section id="daily-forecast"></section></main>'
+          assert page_shape_ok('index.html', home)
+          assert page_shape_ok('spots/kugenuma/index.html', detail)
+          assert not page_shape_ok('index.html', detail)
+          assert not page_shape_ok('index.html', home + b'data-forecast')
+          assert not page_shape_ok('index.html', home.replace(b'END', b'START'))
+          assert not page_shape_ok('spots/kugenuma/index.html', home)
+          assert not page_shape_ok('spots/kugenuma/index.html', detail.replace(b'id="daily-forecast"', b''))
+          assert not page_shape_ok('index.html', home.replace(b'</main>', b''))
+          print('PASS: chartless ranking home and individual forecast layout regression checks')
+
           def fetch_public(rel, salt):
               url='https://kanto.rss7.net/'+rel.removesuffix('index.html')+'?best9_check='+salt+'-'+os.environ.get('GITHUB_RUN_ID','0')
               out=root/('http-'+str(files.index(rel))+'.html')
               proc=subprocess.run(['curl','-4','-fsSL','--retry','3','--max-time','30','-H','Cache-Control: no-cache',url,'-o',str(out)],capture_output=True,text=True)
               if proc.returncode: raise RuntimeError('Public page fetch failed for '+rel)
               content=out.read_bytes()
-              if b'data-forecast' not in content or b'</main>' not in content: raise RuntimeError('Unexpected live page: '+rel)
+              if not page_shape_ok(rel, content): raise RuntimeError('Unexpected live page: '+rel)
               return content
 
           for rel in files: (public/rel).write_bytes(fetch_public(rel,'preflight'))
@@ -127,7 +151,7 @@ jobs:
               new=(stage/rel).read_bytes()
               if marker.sub(b'',expected[rel])!=marker.sub(b'',new):
                   raise RuntimeError('Unsafe change outside article/ranking markers: '+rel)
-              if b'data-forecast' not in new or b'</main>' not in new:
+              if not page_shape_ok(rel, new):
                   raise RuntimeError('Lost existing forecast content: '+rel)
               if new!=old: changed.append(rel)
           if not changed:

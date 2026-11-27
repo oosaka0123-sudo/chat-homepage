@@ -1,0 +1,34 @@
+name: One-off Kanto SNS icons matching Kansai layout
+on:
+  push:
+    branches: [ops/kanto-sns-header-footer-20261127]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: kanto-best9-lolipop-production
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout release script
+        uses: actions/checkout@v4
+      - name: Validate Python release script
+        run: |
+          python3 -m py_compile .github/scripts/kanto_model_sync.py
+          python3 -m py_compile .github/scripts/kanto_sns_sync.py
+      - name: Install encrypted FTPS client
+        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Backup, add SNS icons to 13 live HTML files, and verify public results
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          set +x
+          python3 .github/scripts/kanto_sns_sync.py

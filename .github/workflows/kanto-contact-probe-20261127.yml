@@ -57,5 +57,11 @@ jobs:
           emails=re.findall(r'(?i)[a-z0-9._%+-]+@([a-z0-9-]+(?:\.[a-z0-9-]+)+)',s)
           print('EMAIL_DOMAINS',sorted(set(emails)))
           print('POSSIBLE_TO_VARIABLES',sorted(set(re.findall(r'\$([a-zA-Z_]*(?:to|recipient|admin|mail|email)[a-zA-Z_]*)',s,re.I)))[:35])
+          for lineno,line in enumerate(s.splitlines(),start=1):
+            if re.search(r'\$(?:TO_EMAIL|FROM_EMAIL)\s*=|\bmb_send_mail\s*\(',line,re.I):
+              safe=re.sub(r'[a-z0-9._%+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+','[EMAIL REDACTED]',line,flags=re.I)
+              safe=re.sub(r'\x27[^\x27]*password[^\x27]*\x27','[REDACTED]',safe,flags=re.I)
+              print('CODE_SHAPE_LINE',lineno,safe[:220])
+
           PY
           rm -f "$RUNNER_TEMP/secure/contact.php"

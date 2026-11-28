@@ -21,6 +21,9 @@ jobs:
       - name: Validate project state
         run: python3 scripts/project_state.py validate
 
+      - name: Kanto forecast sync timestamp regression tests (no network or secrets)
+        run: python3 .github/scripts/kanto_model_sync.py --self-test
+
       - name: Whitespace / diff check
         run: |
           set -euo pipefail

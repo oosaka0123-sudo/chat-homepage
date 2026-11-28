@@ -29,11 +29,12 @@ JST = dt.timezone(dt.timedelta(hours=9))
 TOKEN = os.environ.get('GH_TOKEN', '')
 FTP_USER = os.environ.get('FTP_USER', '')
 FTP_PASSWORD = os.environ.get('FTP_PASSWORD', '')
-assert TOKEN and FTP_USER and FTP_PASSWORD, 'Existing action token and FTPS secrets required'
+
 
 def request(url, *, auth=False):
     headers={'User-Agent':'kanto-model-guarded-sync/1.0','Accept':'application/vnd.github+json' if auth else 'application/octet-stream'}
     if auth: headers['Authorization']='Bearer '+TOKEN
+    else: headers.update({'Cache-Control':'no-cache, no-store','Pragma':'no-cache'})
     err=None
     for attempt in range(3):
         try:
@@ -132,7 +133,54 @@ def ftp(lines):
 
 def live_fetch(rel,salt):
     p=rel.removesuffix('index.html') if rel=='index.html' or rel.endswith('/index.html') else rel
-    return request(TARGET+p+'?model_sync='+str(salt))
+    return request(TARGET+p+'?model_sync='+str(salt)+'-'+str(time.time_ns()))
+
+def generation_timestamp(raw, expected_id):
+    data=json.loads(raw)
+    if data.get('spot',{}).get('id')!=expected_id:
+        raise ValueError('Forecast spot ID mismatch: '+expected_id)
+    value=data.get('generated_at')
+    if not isinstance(value,str):
+        raise ValueError('Forecast generation timestamp missing: '+expected_id)
+    timestamp=dt.datetime.fromisoformat(value.replace('Z','+00:00'))
+    if timestamp.tzinfo is None:
+        raise ValueError('Forecast generation timestamp has no timezone: '+expected_id)
+    return timestamp
+
+def verify_no_regression(source, previous):
+    # A delayed or retried build must not replace any newer live spot snapshot.
+    # Equal times are allowed for a verified editorial-only change.
+    for spot in IDS:
+        rel=f'data/{spot}.json'
+        old=generation_timestamp(previous[rel],spot)
+        new=generation_timestamp(source[rel],spot)
+        if new<old:
+            raise RuntimeError('Refusing older forecast for '+spot+
+                               ': source '+new.isoformat()+' < live '+old.isoformat())
+
+def self_test():
+    def fixture(value):
+        return {f'data/{spot}.json':json.dumps({'spot':{'id':spot},'generated_at':value}).encode() for spot in IDS}
+    old=fixture('2026-11-28T08:00:00Z')
+    fresh=fixture('2026-11-28T09:00:00Z')
+    same=fixture('2026-11-28T17:00:00+09:00')
+    verify_no_regression(fresh,old)
+    verify_no_regression(same,old)
+    def rejected(new,previous):
+        try:
+            verify_no_regression(new,previous)
+        except (RuntimeError,ValueError,KeyError):
+            return
+        raise AssertionError('Unsafe snapshot was accepted')
+    rejected(old,fresh)
+    mixed=dict(fresh)
+    mixed['data/taito.json']=fixture('2026-11-28T07:59:59Z')['data/taito.json']
+    rejected(mixed,old)
+    rejected(fresh,fixture('2026-11-28T09:00:00'))
+    bad=dict(old)
+    bad['data/onjuku.json']=b'{"spot":{"id":"taito"},"generated_at":"2026-11-28T08:00:00Z"}'
+    rejected(fresh,bad)
+    print('PASS: monotonic timestamp checks (new/equal/older/mixed/invalid timezone/wrong spot)')
 
 def guarded_sync(source,tmp):
     backup=tmp/'backup';stage=tmp/'stage'
@@ -141,6 +189,7 @@ def guarded_sync(source,tmp):
         (stage/rel).parent.mkdir(parents=True,exist_ok=True)
     ftp([f'get "/kanto/{rel}" -o "{backup/rel}"' for rel in FILES])
     if any(not (backup/p).is_file() for p in FILES):raise RuntimeError('Incomplete backup; production untouched')
+    verify_no_regression(source,{rel:(backup/rel).read_bytes() for rel in DATA if rel!='data/index.json'})
     for rel,id in PAGES:
         old=(backup/rel).read_bytes()
         preserved=old
@@ -210,9 +259,13 @@ def guarded_sync(source,tmp):
         raise
 
 def main():
+    self_test()
+    if sys.argv[1:]==['--self-test']:
+        return
+    assert TOKEN and FTP_USER and FTP_PASSWORD, 'Existing action token and FTPS secrets required'
     r=selected_build()
     if r is None:
-        print('SKIP: no successful main Pages build within five hours; prior production preserved')
+        print('::warning::SKIP: no successful main Pages build within five hours; prior production preserved')
         return
     print('Using exact verified source Pages run',r['id'],'commit',r['head_sha'][:12])
     with source_artifact(r) as archive:

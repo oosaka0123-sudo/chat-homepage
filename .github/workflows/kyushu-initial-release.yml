@@ -1,0 +1,44 @@
+name: Kyushu initial noindex preview release
+on:
+  push:
+    branches: [ops/kyushu-initial-release-20261128]
+    paths: ['.github/workflows/kyushu-initial-release.yml']
+permissions:
+  contents: read
+concurrency:
+  group: kyushu-lolipop-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/ops/kyushu-initial-release-20261128'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Validate immutable approved public-only payload without credentials
+        run: |
+          set -euo pipefail
+          git diff --exit-code a62eb6336b81fae6cbcdd1066d8c4918ea3957d6 HEAD -- .github/kyushu-initial-release
+          test "$(git diff --name-only a62eb6336b81fae6cbcdd1066d8c4918ea3957d6 HEAD)" = .github/workflows/kyushu-initial-release.yml
+          python3 -E .github/kyushu-initial-release/bridge.py
+      - name: Initial upload only to /kyushu and verify all public bytes
+        env:
+          KYUSHU_FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          KYUSHU_FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+          CONFIRM_KYUSHU: kyushu.rss7.net
+        run: |
+          set -euo pipefail
+          python3 -E - <<'PY'
+          import sys
+          sys.path.insert(0, '.github/kyushu-initial-release')
+          import bridge
+          try:
+              sys.argv = ['bridge.py', '--upload']
+              bridge.main()
+          except Exception as error:
+              print('Initial publication stopped:', type(error).__name__, file=sys.stderr)
+              sys.exit(1)
+          PY

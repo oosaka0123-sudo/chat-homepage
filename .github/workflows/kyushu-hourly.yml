@@ -1,0 +1,45 @@
+name: Kyushu hourly forecast recovery and refresh
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+    paths: ['ops/kyushu-hourly/**', '.github/workflows/kyushu-hourly.yml']
+  schedule:
+    - cron: '2 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: kyushu-lolipop-publication
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: >-
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'ops/kyushu-hourly-forecast-20261129') ||
+      (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify pinned maintenance code, run offline checks
+        run: |
+          set -euo pipefail
+          test "$(git hash-object ops/kyushu-hourly/refresh.py)" = 1170014c4af9c325dec420941e5bc2619cf8154a
+          python3 -E ops/kyushu-hourly/refresh.py test
+      - name: Fetch and validate actual current JST forecast batch
+        run: python3 -E ops/kyushu-hourly/refresh.py prepare "$RUNNER_TEMP/kyushu-hourly"
+      - name: Authorized recovery or hourly maintenance of 13 JSON files only
+        if: >-
+          (github.event_name == 'pull_request' && github.event.action == 'opened' &&
+           github.event.pull_request.head.repo.full_name == github.repository &&
+           github.event.pull_request.head.ref == 'ops/kyushu-hourly-forecast-20261129') ||
+          (github.event_name != 'pull_request' && github.ref == 'refs/heads/main')
+        env:
+          KYUSHU_FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          KYUSHU_FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+          CONFIRM_KYUSHU: kyushu.rss7.net
+        run: python3 -E ops/kyushu-hourly/refresh.py publish "$RUNNER_TEMP/kyushu-hourly"

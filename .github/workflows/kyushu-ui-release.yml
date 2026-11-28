@@ -1,0 +1,31 @@
+name: Kyushu Kanto-style forecast UI release
+on:
+  push:
+    branches: [ops/kyushu-ui-release-20261128]
+    paths: ['.github/workflows/kyushu-ui-release.yml']
+permissions:
+  contents: read
+concurrency:
+  group: kyushu-lolipop-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/ops/kyushu-ui-release-20261128'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Verify exact immutable payload without credentials
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only bfd13144a49378e6c3aaecd4f5f0d98e5d8c92da HEAD)" = .github/workflows/kyushu-ui-release.yml
+          python3 -E .github/kyushu-ui-release/release.py
+      - name: Verify old files, stage, replace, verify or restore
+        env:
+          KYUSHU_FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          KYUSHU_FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+          CONFIRM_KYUSHU: kyushu.rss7.net
+        run: python3 -E .github/kyushu-ui-release/release.py --publish

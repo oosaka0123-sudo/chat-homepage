@@ -1,0 +1,46 @@
+name: Kyushu initial FTPS read-only preflight
+on:
+  push:
+    branches: [ops/kyushu-initial-preflight-20261128]
+    paths: ['.github/workflows/kyushu-initial-preflight.yml']
+permissions:
+  contents: read
+concurrency:
+  group: kyushu-lolipop-initial-preflight
+  cancel-in-progress: false
+jobs:
+  preflight:
+    if: github.ref == 'refs/heads/ops/kyushu-initial-preflight-20261128'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read-only FTPS destination check
+        env:
+          FTP_USER: ${{ secrets.CHAT_FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.CHAT_FTP_PASSWORD }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import ftplib, os, ssl, sys
+          try:
+              user = os.environ.get('FTP_USER')
+              password = os.environ.get('FTP_PASSWORD')
+              if not user or not password:
+                  raise ValueError('Missing shared FTPS configuration')
+              with ftplib.FTP_TLS(context=ssl.create_default_context(), timeout=20) as ftp:
+                  ftp.connect('ftp.lolipop.jp', 21)
+                  ftp.login(user, password)
+                  ftp.prot_p()
+                  ftp.cwd('/kyushu')
+                  if ftp.pwd().rstrip('/') != '/kyushu':
+                      raise ValueError('Destination mismatch')
+                  entries = [(n, f) for n, f in ftp.mlsd() if n not in ('.', '..') and f.get('type') not in ('cdir', 'pdir')]
+                  print('PASS: authenticated FTPS, certificate verified, exact /kyushu destination')
+                  print('Existing destination entries:', len(entries))
+                  if entries:
+                      raise ValueError('Destination is not empty; no writes permitted')
+                  print('PASS: empty destination; read-only preflight complete')
+          except Exception as error:
+              print('Preflight stopped:', type(error).__name__, file=sys.stderr)
+              sys.exit(1)
+          PY
